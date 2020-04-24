@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>800</width>
+    <height>600</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="dockOptions">
+   <set>QMainWindow::AllowTabbedDocks|QMainWindow::AnimatedDocks</set>
+  </property>
+  <widget class="QWidget" name="centralWidget"/>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1024</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionOpenProject"/>
+    <addaction name="actionSaveProject"/>
+    <addaction name="actionCloseProject"/>
+    <addaction name="separator"/>
+    <addaction name="actionSaveScreenshot"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAboutOpenGL"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuEntity">
+    <property name="title">
+     <string>Entity</string>
+    </property>
+    <addaction name="actionAddPlane"/>
+    <addaction name="actionAddCube"/>
+    <addaction name="actionAddSphere"/>
+    <addaction name="separator"/>
+    <addaction name="actionImportModel"/>
+    <addaction name="separator"/>
+    <addaction name="actionAddPointLight"/>
+    <addaction name="actionAddDirectionalLight"/>
+   </widget>
+   <widget class="QMenu" name="menuAssets">
+    <property name="title">
+     <string>Resources</string>
+    </property>
+    <addaction name="actionAddMesh"/>
+    <addaction name="actionAddMaterial"/>
+    <addaction name="actionAddTexture"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEntity"/>
+   <addaction name="menuAssets"/>
+   <addaction name="menuView"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionOpenProject"/>
+   <addaction name="actionSaveProject"/>
+   <addaction name="actionSaveScreenshot"/>
+   <addaction name="actionReloadShaderPrograms"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionOpenProject">
+   <property name="icon">
+    <iconset>
+     <normalon>:/icons/open_file</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Open project</string>
+   </property>
+  </action>
+  <action name="actionSaveProject">
+   <property name="icon">
+    <iconset>
+     <normalon>:/icons/save_file</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Save project</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionAboutOpenGL">
+   <property name="text">
+    <string>About OpenGL</string>
+   </property>
+  </action>
+  <action name="actionSaveScreenshot">
+   <property name="icon">
+    <iconset resource="../res/resources.qrc">
+     <normaloff>:/icons/save_screenshot</normaloff>:/icons/save_screenshot</iconset>
+   </property>
+   <property name="text">
+    <string>Save screenshot</string>
+   </property>
+  </action>
+  <action name="actionAddPlane">
+   <property name="text">
+    <string>Add plane</string>
+   </property>
+  </action>
+  <action name="actionAddCube">
+   <property name="text">
+    <string>Add cube</string>
+   </property>
+  </action>
+  <action name="actionAddSphere">
+   <property name="text">
+    <string>Add sphere</string>
+   </property>
+  </action>
+  <action name="actionAddMesh">
+   <property name="text">
+    <string>Add mesh</string>
+   </property>
+  </action>
+  <action name="actionAddMaterial">
+   <property name="text">
+    <string>Add material</string>
+   </property>
+  </action>
+  <action name="actionAddTexture">
+   <property name="text">
+    <string>Add texture</string>
+   </property>
+  </action>
+  <action name="actionAddPointLight">
+   <property name="text">
+    <string>Add point light</string>
+   </property>
+  </action>
+  <action name="actionAddDirectionalLight">
+   <property name="text">
+    <string>Add directional light</string>
+   </property>
+  </action>
+  <action name="actionImportModel">
+   <property name="text">
+    <string>Import model</string>
+   </property>
+  </action>
+  <action name="actionReloadShaderPrograms">
+   <property name="text">
+    <string>Reload shader programs</string>
+   </property>
+  </action>
+  <action name="actionAddTerrain">
+   <property name="text">
+    <string>Add terrain</string>
+   </property>
+  </action>
+  <action name="actionCloseProject">
+   <property name="text">
+    <string>Close project</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="../res/resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>
