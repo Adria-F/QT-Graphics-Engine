@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="open_file">Folder.png</file>
+        <file alias="save_file">save.png</file>
+        <file alias="new_file">Doc.png</file>
+        <file alias="remove">Badge-multiply.png</file>
+        <file alias="collapsed">collapsed.png</file>
+        <file alias="expanded">expanded.png</file>
+        <file alias="close">close.png</file>
+        <file alias="float">float.png</file>
+        <file alias="save_screenshot">camera.png</file>
+    </qresource>
+    <qresource prefix="/shaders">
+        <file alias="forward_shading.frag">shaders/forward_shading.frag</file>
+        <file alias="forward_shading.vert">shaders/forward_shading.vert</file>
+        <file alias="texture_view.frag">shaders/texture_view.frag</file>
+        <file alias="texture_view.vert">shaders/texture_view.vert</file>
+        <file alias="blit.vert">shaders/blit.vert</file>
+        <file alias="blit.frag">shaders/blit.frag</file>
+    </qresource>
+</RCC>
