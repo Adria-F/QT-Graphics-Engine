@@ -1,6 +1,7 @@
 #include "ui/openglwidget.h"
 #include <QOpenGLDebugLogger>
 #include "rendering/forwardrenderer.h"
+#include "rendering/deferredrenderer.h"
 #include "resources/resourcemanager.h"
 #include "resources/texture.h"
 #include "globals.h"
@@ -39,7 +40,8 @@ OpenGLWidget::OpenGLWidget(QWidget *parent)
     camera = new Camera();
     interaction = new Interaction();
     selection = new Selection();
-    renderer = new ForwardRenderer();
+    // renderer = new ForwardRenderer();
+    renderer = new DeferredRenderer();
     miscSettings = new MiscSettings();
 
     // global
