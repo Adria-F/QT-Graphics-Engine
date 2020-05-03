@@ -129,6 +129,11 @@ bool Interaction::navigate()
         speedVector *= 0.9;
     }
 
+    // Cap maximum speed
+    if(speedVector.length() > camera->maxSpeed){
+        speedVector = speedVector.normalized() * camera->maxSpeed;
+    }
+
     camera->position += speedVector * t;
 
     if (!(pollEvents ||

@@ -6,7 +6,7 @@
 #include <QVector4D>
 #include <QMatrix4x4>
 
-static const float DEFAULT_CAMERA_SPEED = 4.0f;
+static const float DEFAULT_CAMERA_SPEED = 0.5f;
 static const float DEFAULT_CAMERA_FOVY = 60.0f;
 static const float DEFAULT_CAMERA_ZNEAR = 0.01f;
 static const float DEFAULT_CAMERA_ZFAR = 10000.0f;
@@ -42,7 +42,7 @@ public:
     QVector3D position;
 
     // Speed
-    float speed = DEFAULT_CAMERA_SPEED;
+    float maxSpeed = DEFAULT_CAMERA_SPEED;
 
     // Derived matrices
     QMatrix4x4 worldMatrix; // From camera space to world space

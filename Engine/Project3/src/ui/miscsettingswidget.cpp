@@ -28,7 +28,7 @@ MiscSettingsWidget::~MiscSettingsWidget()
 
 void MiscSettingsWidget::onCameraSpeedChanged(double speed)
 {
-    camera->speed = speed;
+    camera->maxSpeed = speed;
 }
 
 void MiscSettingsWidget::onCameraFovYChanged(double fovy)

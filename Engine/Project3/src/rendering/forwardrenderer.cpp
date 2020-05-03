@@ -16,7 +16,7 @@
 #include <QOpenGLTexture>
 
 
-static void sendLightsToProgram(QOpenGLShaderProgram &program, const QMatrix4x4 &viewMatrix)
+static void sendLightsToProgram(QOpenGLShaderProgram &program, const QMatrix4x4 &worldMatrix)
 {
     QVector<int> lightType;
     QVector<QVector3D> lightPosition;
@@ -27,9 +27,12 @@ static void sendLightsToProgram(QOpenGLShaderProgram &program, const QMatrix4x4 
         if (entity->active && entity->lightSource != nullptr)
         {
             auto light = entity->lightSource;
+            auto transform = *entity->transform;
+            transform.position.setZ(-transform.position.z());
+
             lightType.push_back(int(light->type));
-            lightPosition.push_back(QVector3D(viewMatrix * entity->transform->matrix() * QVector4D(0.0, 0.0, 0.0, 1.0)));
-            lightDirection.push_back(QVector3D(viewMatrix * entity->transform->matrix() * QVector4D(0.0, 1.0, 0.0, 0.0)));
+            lightPosition.push_back(QVector3D(transform.matrix() * QVector4D(0.0, 0.0, 0.0, 1.0)));
+            lightDirection.push_back(QVector3D(transform.matrix() * QVector4D(0.0, 1.0, 0.0, 0.0)));
             QVector3D color(light->color.redF(), light->color.greenF(), light->color.blueF());
             lightColor.push_back(color * light->intensity);
         }
@@ -53,7 +56,7 @@ ForwardRenderer::ForwardRenderer() :
     // List of textures
     addTexture("Final render");
     addTexture("White");
-    addTexture("Black");
+    addTexture("Terrain");
 }
 
 ForwardRenderer::~ForwardRenderer()
@@ -161,7 +164,7 @@ void ForwardRenderer::passMeshes(Camera *camera)
         program.setUniformValue("viewMatrix", camera->viewMatrix);
         program.setUniformValue("projectionMatrix", camera->projectionMatrix);
 
-        sendLightsToProgram(program, camera->viewMatrix);
+        sendLightsToProgram(program, camera->worldMatrix);
 
         QVector<MeshRenderer*> meshRenderers;
         QVector<LightSource*> lightSources;
