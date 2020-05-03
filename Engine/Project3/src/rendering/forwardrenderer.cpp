@@ -56,7 +56,7 @@ ForwardRenderer::ForwardRenderer() :
     // List of textures
     addTexture("Final render");
     addTexture("White");
-    addTexture("Terrain");
+    addTexture("Black");
 }
 
 ForwardRenderer::~ForwardRenderer()
