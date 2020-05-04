@@ -28,7 +28,6 @@ static void sendLightsToProgram(QOpenGLShaderProgram &program, const QMatrix4x4 
         {
             auto light = entity->lightSource;
             auto transform = *entity->transform;
-            transform.position.setZ(-transform.position.z());
 
             lightType.push_back(int(light->type));
             lightPosition.push_back(QVector3D(transform.matrix() * QVector4D(0.0, 0.0, 0.0, 1.0)));
