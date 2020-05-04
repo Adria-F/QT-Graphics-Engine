@@ -29,9 +29,14 @@ private:
     ShaderProgram *forwardProgram = nullptr;
     ShaderProgram *blitProgram;
 
-    GLuint fboNormalsColor = 0;
-    GLuint fboDepthColor = 0;
+    GLuint fboPosition = 0;
+    GLuint fboNormals = 0;
+    GLuint fboColor = 0;
+    // Unused
+    GLuint fboSpecular = 0;
     GLuint fboDepth = 0;
+    GLuint grid = 0; // Maybe create another shader
+
     FramebufferObject *fbo = nullptr;
 
 };

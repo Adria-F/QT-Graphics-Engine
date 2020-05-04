@@ -47,17 +47,17 @@ static void sendLightsToProgram(QOpenGLShaderProgram &program, const QMatrix4x4 
 }
 
 DeferredRenderer::DeferredRenderer() :
-    fboNormalsColor(QOpenGLTexture::Target2D),
-    fboDepthColor(QOpenGLTexture::Target2D),
+    fboPosition(QOpenGLTexture::Target2D),
+    fboNormals(QOpenGLTexture::Target2D),
+    fboColor(QOpenGLTexture::Target2D),
     fboDepth(QOpenGLTexture::Target2D)
 {
     fbo = nullptr;
 
     // List of textures
+    addTexture("Position");
+    addTexture("Normals");
     addTexture("Color");
-    addTexture("Depth");
-    addTexture("White");
-    addTexture("Black");
 }
 
 DeferredRenderer::~DeferredRenderer()
@@ -102,25 +102,38 @@ void DeferredRenderer::resize(int w, int h)
 
     // Regenerate render targets
 
-    if (fboNormalsColor == 0) gl->glDeleteTextures(1, &fboNormalsColor);
-    gl->glGenTextures(1, &fboNormalsColor);
-    gl->glBindTexture(GL_TEXTURE_2D, fboNormalsColor);
+    if (fboPosition == 0) gl->glDeleteTextures(1, &fboPosition);
+    gl->glGenTextures(1, &fboPosition);
+    gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    //gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
 
-    if (fboDepthColor == 0) gl->glDeleteTextures(1, &fboDepthColor);
-    gl->glGenTextures(1, &fboDepthColor);
-    gl->glBindTexture(GL_TEXTURE_2D, fboDepthColor);
+    if (fboNormals == 0) gl->glDeleteTextures(1, &fboNormals);
+    gl->glGenTextures(1, &fboNormals);
+    gl->glBindTexture(GL_TEXTURE_2D, fboNormals);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    //gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+
+    if (fboColor == 0) gl->glDeleteTextures(1, &fboColor);
+    gl->glGenTextures(1, &fboColor);
+    gl->glBindTexture(GL_TEXTURE_2D, fboColor);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    //gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
 
     if (fboDepth == 0) gl->glDeleteTextures(1, &fboDepth);
     gl->glGenTextures(1, &fboDepth);
@@ -136,12 +149,13 @@ void DeferredRenderer::resize(int w, int h)
     // Attach textures to the fbo
 
     fbo->bind();
-    fbo->addColorAttachment(0, fboNormalsColor);
-    fbo->addColorAttachment(1, fboDepthColor);
+    fbo->addColorAttachment(0, fboPosition);
+    fbo->addColorAttachment(1, fboNormals);
+    fbo->addColorAttachment(2, fboColor);
     fbo->addDepthAttachment(fboDepth);
     // - tell OpenGL which color attachments we'll use (of this framebuffer) for rendering
-    unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    gl->glDrawBuffers(2, attachments);
+    unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+    gl->glDrawBuffers(3, attachments);
     fbo->checkStatus();
     fbo->release();
 
@@ -291,14 +305,12 @@ void DeferredRenderer::passBlit()
         program.setUniformValue("colorTexture", 0);
         gl->glActiveTexture(GL_TEXTURE0);
 
-        if (shownTexture() == "Color") {
-            gl->glBindTexture(GL_TEXTURE_2D, fboNormalsColor);
-        } else if(shownTexture() == "Depth") {
-            gl->glBindTexture(GL_TEXTURE_2D, fboDepthColor);
-        } else if(shownTexture() == "White") {
-            gl->glBindTexture(GL_TEXTURE_2D, resourceManager->texWhite->textureId());
-        } else if(shownTexture() == "Black"){
-            gl->glBindTexture(GL_TEXTURE_2D, resourceManager->texBlack->textureId());
+        if (shownTexture() == "Position") {
+            gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
+        } else if(shownTexture() == "Normals") {
+            gl->glBindTexture(GL_TEXTURE_2D, fboNormals);
+        } else if(shownTexture() == "Color"){
+            gl->glBindTexture(GL_TEXTURE_2D, fboColor);
         }
 
         resourceManager->quad->submeshes[0]->draw();

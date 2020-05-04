@@ -44,7 +44,7 @@ OpenGLWidget::OpenGLWidget(QWidget *parent)
     deferredRenderer = new DeferredRenderer();
 
     // Initial renderer
-    renderer = forwardRenderer;
+    renderer = deferredRenderer;
     miscSettings = new MiscSettings();
 
     // global
