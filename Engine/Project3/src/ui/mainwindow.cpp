@@ -45,11 +45,21 @@ MainWindow::MainWindow(QWidget *parent) :
     centralLayout->addWidget(openGLWidget);
     uiMainWindow->centralWidget->setLayout(centralLayout);
 
-    // Combo-box with renderer intermediate outputs
+    // Combo-box with renderer
     auto comboRenderer = new QComboBox;
-    QVector<QString> textureNames = openGLWidget->getTextureNames();
-    for (auto textureName : textureNames) { comboRenderer->addItem(textureName); }
+    comboRenderer->addItem("Forward renderer");
+    comboRenderer->addItem("Deferred renderer");
     uiMainWindow->toolBar->addWidget(comboRenderer);
+
+    // Set the initialized renderer in combo box
+    comboRenderer->setCurrentIndex(comboRenderer->findText(openGLWidget->getRenderType()));
+
+    // Combo-box with renderer intermediate outputs
+    comboRendererOutput = new QComboBox;
+    QVector<QString> textureNames = openGLWidget->getTextureNames();
+    for (auto textureName : textureNames) { comboRendererOutput->addItem(textureName); }
+    uiMainWindow->toolBar->addWidget(comboRendererOutput);
+
 
     // All tab positions on top of the docking area
     setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::TabPosition::North);
@@ -107,7 +117,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(uiMainWindow->actionAddTexture, SIGNAL(triggered()), this, SLOT(addTexture()));
     connect(uiMainWindow->actionAddMaterial, SIGNAL(triggered()), this, SLOT(addMaterial()));
     connect(uiMainWindow->actionReloadShaderPrograms, SIGNAL(triggered()), this, SLOT(reloadShaderPrograms()));
-    connect(comboRenderer, SIGNAL(currentIndexChanged(QString)), this, SLOT(onRenderOutputChanged(QString)));
+    connect(comboRenderer, SIGNAL(currentIndexChanged(QString)), this, SLOT(onRenderChanged(QString)));
+    connect(comboRendererOutput, SIGNAL(currentIndexChanged(QString)), this, SLOT(onRenderOutputChanged(QString)));
 
     connect(hierarchyWidget, SIGNAL(entityAdded(Entity *)), this, SLOT(onEntityAdded(Entity *)));
     connect(hierarchyWidget, SIGNAL(entityRemoved(Entity *)), this, SLOT(onEntityRemoved(Entity *)));
@@ -457,8 +468,20 @@ void MainWindow::reloadShaderPrograms()
     openGLWidget->update();
 }
 
+void MainWindow::onRenderChanged(QString name)
+{
+     openGLWidget->setRenderer(name);
+
+    // Update rendererOutput options
+    comboRendererOutput->clear();
+    QVector<QString> textureNames = openGLWidget->getTextureNames();
+    for (auto textureName : textureNames) { comboRendererOutput->addItem(textureName); }
+}
+
 void MainWindow::onRenderOutputChanged(QString name)
 {
     openGLWidget->showTextureWithName(name);
     openGLWidget->update();
 }
+
+

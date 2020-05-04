@@ -39,6 +39,8 @@ public:
     // Public methods
     QString getOpenGLInfo();
     QImage getScreenshot();
+    void setRenderer(QString);
+    QString getRenderType();
 
     // Texture created by renderers
     QVector<QString> getTextureNames();
@@ -64,7 +66,11 @@ private:
     Camera *camera = nullptr;
     Interaction *interaction = nullptr;
     Selection *selection = nullptr;
+    Renderer *forwardRenderer = nullptr;
+    Renderer *deferredRenderer = nullptr;
     Renderer *renderer = nullptr;
+
+
 };
 
 #endif // OPENGLWIDGET_H

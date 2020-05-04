@@ -40,8 +40,11 @@ OpenGLWidget::OpenGLWidget(QWidget *parent)
     camera = new Camera();
     interaction = new Interaction();
     selection = new Selection();
-    // renderer = new ForwardRenderer();
-    renderer = new DeferredRenderer();
+    forwardRenderer = new ForwardRenderer();
+    deferredRenderer = new DeferredRenderer();
+
+    // Initial renderer
+    renderer = deferredRenderer;
     miscSettings = new MiscSettings();
 
     // global
@@ -217,6 +220,26 @@ QImage OpenGLWidget::getScreenshot()
     return grabFramebuffer();
 }
 
+
+void OpenGLWidget::setRenderer(QString renderType){
+
+    renderer->finalize();
+
+    if(renderType == "Forward renderer")
+        renderer = forwardRenderer;
+    else if(renderType == "Deferred renderer")
+        renderer = deferredRenderer;
+
+    renderer->initialize();
+}
+
+QString OpenGLWidget::getRenderType(){
+    if(renderer == forwardRenderer)
+        return "Forward renderer";
+    if(renderer == deferredRenderer)
+        return "Deferred renderer";
+
+}
 QVector<QString> OpenGLWidget::getTextureNames()
 {
     QVector<QString> textureNames = renderer->getTextures();

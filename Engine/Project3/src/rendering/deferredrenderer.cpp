@@ -140,11 +140,13 @@ void DeferredRenderer::resize(int w, int h)
     fbo->addColorAttachment(0, fboNormalsColor);
     fbo->addColorAttachment(1, fboDepthColor);
     fbo->addDepthAttachment(fboDepth);
+    // - tell OpenGL which color attachments we'll use (of this framebuffer) for rendering
+    unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    gl->glDrawBuffers(2, attachments);
     fbo->checkStatus();
     fbo->release();
 
-    unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    gl->glDrawBuffers(2, attachments);
+
 }
 
 void DeferredRenderer::render(Camera *camera)
@@ -293,7 +295,6 @@ void DeferredRenderer::passBlit()
         if (shownTexture() == "Color") {
             gl->glBindTexture(GL_TEXTURE_2D, fboNormalsColor);
         } else if(shownTexture() == "Depth") {
-            gl->glActiveTexture(GL_TEXTURE1);
             gl->glBindTexture(GL_TEXTURE_2D, fboDepthColor);
         } else if(shownTexture() == "White") {
             gl->glBindTexture(GL_TEXTURE_2D, resourceManager->texWhite->textureId());

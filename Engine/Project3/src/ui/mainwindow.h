@@ -15,6 +15,7 @@ class ResourceManager;
 class Scene;
 class Entity;
 class Resource;
+class QComboBox;
 
 class MainWindow : public QMainWindow
 {
@@ -56,6 +57,7 @@ public slots:
     void updateEverything();
     void reloadShaderPrograms();
     void onRenderOutputChanged(QString);
+    void onRenderChanged(QString);
 
 private:
 
@@ -68,6 +70,7 @@ private:
 private:
 
     Ui::MainWindow *uiMainWindow;
+    QComboBox* comboRendererOutput;
 
 public:
     OpenGLWidget    *openGLWidget;
