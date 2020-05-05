@@ -23,14 +23,17 @@ public:
 private:
 
     void passMeshes(Camera *camera);
+    void passLights(Camera *camera);
     void passBlit();
 
     // Shaders
-    ShaderProgram *forwardProgram = nullptr;
+    ShaderProgram *deferredGeometryProgram = nullptr;
+    ShaderProgram *deferredLightingProgram = nullptr;
     ShaderProgram *blitProgram;
 
+    GLuint fboFinalRender = 0;
     GLuint fboPosition = 0;
-    GLuint fboNormals = 0;
+    GLuint fboNormal = 0;
     GLuint fboColor = 0;
     // Unused
     GLuint fboSpecular = 0;

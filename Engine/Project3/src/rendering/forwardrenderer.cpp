@@ -69,7 +69,7 @@ void ForwardRenderer::initialize()
 
     forwardProgram = resourceManager->createShaderProgram();
     forwardProgram->name = "Forward shading";
-    forwardProgram->vertexShaderFilename = "res/shaders/forward_shading.vert";
+    forwardProgram->vertexShaderFilename = "res/shaders/standard_shading.vert";
     forwardProgram->fragmentShaderFilename = "res/shaders/forward_shading.frag";
     forwardProgram->includeForSerialization = false;
 
@@ -158,6 +158,9 @@ void ForwardRenderer::passMeshes(Camera *camera)
 
     if (program.bind())
     {
+        unsigned int attachments[1] = { GL_COLOR_ATTACHMENT0};
+        gl->glDrawBuffers(1, attachments);
+
         program.setUniformValue("viewMatrix", camera->viewMatrix);
         program.setUniformValue("projectionMatrix", camera->projectionMatrix);
 

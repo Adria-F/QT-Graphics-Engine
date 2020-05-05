@@ -12,10 +12,10 @@
     </qresource>
     <qresource prefix="/shaders">
         <file alias="forward_shading.frag">shaders/forward_shading.frag</file>
-        <file alias="forward_shading.vert">shaders/forward_shading.vert</file>
         <file alias="texture_view.frag">shaders/texture_view.frag</file>
         <file alias="texture_view.vert">shaders/texture_view.vert</file>
         <file alias="blit.vert">shaders/blit.vert</file>
         <file alias="blit.frag">shaders/blit.frag</file>
+        <file alias="standard_shading.vert">shaders/standard_shading.vert</file>
     </qresource>
 </RCC>
