@@ -194,15 +194,16 @@ void DeferredRenderer::passLights(Camera *camera)
 
         // Clear color
         gl->glClearDepth(1.0);
-        gl->glClearColor(miscSettings->backgroundColor.redF(),
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        /*gl->glClearColor(miscSettings->backgroundColor.redF(),
                          miscSettings->backgroundColor.greenF(),
                          miscSettings->backgroundColor.blueF(),
-                         1.0);
+                         1.0);*/
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         //Set uniforms
         program.setUniformValue("viewMatrix", camera->viewMatrix);
-        program.setUniformValue("projectionMatrix", camera->projectionMatrix);
+        program.setUniformValue("projectionMatrix", camera->projectionMatrix);             
 
         gl->glActiveTexture(GL_TEXTURE0);
         gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
@@ -215,6 +216,7 @@ void DeferredRenderer::passLights(Camera *camera)
         program.setUniformValue("gColor", 2);
 
         program.setUniformValue("cameraPos", camera->position);
+        program.setUniformValue("viewportSize", QVector2D(camera->viewportWidth, camera->viewportHeight));
 
         //Render spheres on lights
         for (auto entity : scene->entities)
@@ -234,6 +236,7 @@ void DeferredRenderer::passLights(Camera *camera)
                 program.setUniformValue("normalMatrix", normalMatrix);
 
                 program.setUniformValue("lightType", (int)light->type);
+                program.setUniformValue("lightPosition", transform.position);
                 program.setUniformValue("lightDirection", QVector3D(transform.matrix() * QVector4D(0.0, 1.0, 0.0, 0.0)));
                 program.setUniformValue("lightColor", light->color);
                 program.setUniformValue("lightIntensity", light->intensity);
