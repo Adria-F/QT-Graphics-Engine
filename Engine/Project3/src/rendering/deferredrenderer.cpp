@@ -52,7 +52,8 @@ DeferredRenderer::DeferredRenderer() :
     fboColor(QOpenGLTexture::Target2D),
     fboDepth(QOpenGLTexture::Target2D)
 {
-    fbo = nullptr;
+    fboInfo = nullptr;
+    fboFinal = nullptr;
 
     // List of textures
     addTexture("Final Render");
@@ -64,7 +65,8 @@ DeferredRenderer::DeferredRenderer() :
 
 DeferredRenderer::~DeferredRenderer()
 {
-    delete fbo;
+    delete fboInfo;
+    delete fboFinal;
 }
 
 void DeferredRenderer::initialize()
@@ -95,15 +97,21 @@ void DeferredRenderer::initialize()
 
 
     // Create FBO
+    fboInfo = new FramebufferObject;
+    fboInfo->create();
 
-    fbo = new FramebufferObject;
-    fbo->create();
+    fboFinal = new FramebufferObject;
+    fboFinal->create();
+
 }
 
 void DeferredRenderer::finalize()
 {
-    fbo->destroy();
-    delete fbo;
+    fboInfo->destroy();
+    delete fboInfo;
+
+    fboFinal->destroy();
+    delete fboFinal;
 }
 
 void DeferredRenderer::resize(int w, int h)
@@ -173,19 +181,37 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+
+    //Set color attachments
+    fboInfo->bind();
+    fboInfo->addColorAttachment(0, fboPosition);
+    fboInfo->addColorAttachment(1, fboNormal);
+    fboInfo->addColorAttachment(2, fboColor);
+    fboInfo->addDepthAttachment(fboDepth);
+    unsigned int attachments_info[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+    gl->glDrawBuffers(3, attachments_info);
+    fboInfo->release();
+
+    fboFinal->bind();
+    fboFinal->addColorAttachment(0, fboFinalRender);
+    fboFinal->addColorAttachment(1, fboLightCircles);
+    unsigned int attachments_final[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    gl->glDrawBuffers(2, attachments_final);
+    fboFinal->release();
 }
 
 void DeferredRenderer::render(Camera *camera)
 {
     OpenGLErrorGuard guard("DeferredRenderer::render()");
 
-    fbo->bind();
 
     // Passes
+    fboInfo->bind();
     passMeshes(camera);
+    fboInfo->release();
+    fboFinal->bind();
     passLights(camera);
-
-    fbo->release();
+    fboFinal->release();
 
     gl->glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -198,19 +224,9 @@ void DeferredRenderer::passLights(Camera *camera)
 
     if (program.bind())
     {
-        //Set color attachments
-        fbo->addColorAttachment(0, fboFinalRender);
-        fbo->addColorAttachment(1, fboLightCircles);
-        unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-        gl->glDrawBuffers(2, attachments);
-
         // Clear color
         gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
-        /*gl->glClearColor(miscSettings->backgroundColor.redF(),
-                         miscSettings->backgroundColor.greenF(),
-                         miscSettings->backgroundColor.blueF(),
-                         1.0);*/
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         //Set uniforms
@@ -297,14 +313,6 @@ void DeferredRenderer::passMeshes(Camera *camera)
 
     if (program.bind())
     {
-        //Set color attachments
-        fbo->addColorAttachment(0, fboPosition);
-        fbo->addColorAttachment(1, fboNormal);
-        fbo->addColorAttachment(2, fboColor);
-        fbo->addDepthAttachment(fboDepth);
-        unsigned int attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-        gl->glDrawBuffers(3, attachments);
-
         // Clear color
         gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);

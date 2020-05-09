@@ -31,17 +31,22 @@ private:
     ShaderProgram *deferredLightingProgram = nullptr;
     ShaderProgram *blitProgram;
 
-    GLuint fboFinalRender = 0;
+    FramebufferObject *fboInfo = nullptr;
     GLuint fboPosition = 0;
     GLuint fboNormal = 0;
     GLuint fboColor = 0;
+
+    FramebufferObject *fboFinal = nullptr;
+    GLuint fboFinalRender = 0;
     GLuint fboLightCircles = 0;
+
     // Unused
     GLuint fboSpecular = 0;
     GLuint fboDepth = 0;
     GLuint grid = 0; // Maybe create another shader
 
-    FramebufferObject *fbo = nullptr;
+
+
 
 };
 
