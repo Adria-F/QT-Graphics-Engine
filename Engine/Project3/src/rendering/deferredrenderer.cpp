@@ -215,7 +215,6 @@ void DeferredRenderer::passLights(Camera *camera)
 
         //Set uniforms
         program.setUniformValue("viewMatrix", camera->viewMatrix);
-        program.setUniformValue("projectionMatrix", camera->projectionMatrix);             
 
         gl->glActiveTexture(GL_TEXTURE0);
         gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
@@ -251,10 +250,17 @@ void DeferredRenderer::passLights(Camera *camera)
                 QMatrix4x4 worldMatrix = transform.matrix();
                 QMatrix4x4 worldViewMatrix = camera->viewMatrix * worldMatrix;
                 QMatrix3x3 normalMatrix = worldViewMatrix.normalMatrix();
+                QMatrix4x4 projectionMatrix = camera->projectionMatrix;
+
+                if(light->type ==  LightSource::Type::Directional){
+                    projectionMatrix = QMatrix4x4();
+                    worldViewMatrix = QMatrix4x4();
+                }
 
                 program.setUniformValue("worldMatrix", worldMatrix);
                 program.setUniformValue("worldViewMatrix", worldViewMatrix);
                 program.setUniformValue("normalMatrix", normalMatrix);
+                program.setUniformValue("projectionMatrix", projectionMatrix);
 
                 program.setUniformValue("lightType", (int)light->type);
                 program.setUniformValue("lightPosition", transform.position);

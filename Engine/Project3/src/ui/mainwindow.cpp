@@ -254,12 +254,13 @@ void MainWindow::addSphere()
 void MainWindow::addPointLight()
 {
     Entity *entity = scene->addEntity();
-    entity->transform->position = QVector3D(3.0f, 5.0f, 4.0f);
+    entity->transform->position = QVector3D(0.0f, -3.0f, 3.0f);
     entity->name = "Point light";
     entity->addComponent(ComponentType::LightSource);
     entity->lightSource->type = LightSource::Type::Point;
     entity->lightSource->intensity = 10.0f;
-    entity->lightSource->range = 20.0f;
+    entity->lightSource->range = 30.0f;
+    entity->lightSource->calculateRadius();
     onEntityAdded(entity);
 }
 
