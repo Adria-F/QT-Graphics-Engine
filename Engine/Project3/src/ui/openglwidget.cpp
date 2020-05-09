@@ -44,7 +44,7 @@ OpenGLWidget::OpenGLWidget(QWidget *parent)
     deferredRenderer = new DeferredRenderer();
 
     // Initial renderer
-    renderer = deferredRenderer;
+    renderer = forwardRenderer;
     miscSettings = new MiscSettings();
 
     // global
@@ -91,14 +91,16 @@ void OpenGLWidget::initializeGL()
     gl->glEnable(GL_DEPTH_TEST);
     gl->glDisable(GL_BLEND);
 
-    renderer->initialize();
+    forwardRenderer->initialize();
+    deferredRenderer->initialize();
 }
 
 void OpenGLWidget::resizeGL(int w, int h)
 {
     camera->viewportWidth = w;
     camera->viewportHeight = h;
-    renderer->resize(w, h);
+    forwardRenderer->resize(w, h);
+    deferredRenderer->resize(w, h);
 }
 
 void OpenGLWidget::paintGL()
@@ -114,7 +116,8 @@ void OpenGLWidget::finalizeGL()
 {
     makeCurrent();
 
-    renderer->finalize();
+    forwardRenderer->finalize();
+    deferredRenderer->finalize();
 
     resourceManager->destroyResources();
 
@@ -223,14 +226,13 @@ QImage OpenGLWidget::getScreenshot()
 
 void OpenGLWidget::setRenderer(QString renderType){
 
-    renderer->finalize();
 
     if(renderType == "Forward renderer")
         renderer = forwardRenderer;
     else if(renderType == "Deferred renderer")
         renderer = deferredRenderer;
 
-    renderer->initialize();
+
 }
 
 QString OpenGLWidget::getRenderType(){

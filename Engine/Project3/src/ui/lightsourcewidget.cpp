@@ -76,18 +76,24 @@ void LightSourceWidget::setLightSource(LightSource *light)
 void LightSourceWidget::onTypeChanged(int index)
 {
     lightSource->type = (LightSource::Type)comboType->itemData(index).value<int>();
+    if (lightSource->type == LightSource::Type::Point)
+        lightSource->calculateRadius();
     emit componentChanged(lightSource);
 }
 
 void LightSourceWidget::onIntensityChanged(double val)
 {
     lightSource->intensity = val;
+    if (lightSource->type == LightSource::Type::Point)
+        lightSource->calculateRadius();
     emit componentChanged(lightSource);
 }
 
 void LightSourceWidget::onRangeChanged(double val)
 {
     lightSource->range = val;
+    if (lightSource->type == LightSource::Type::Point)
+        lightSource->calculateRadius();
     emit componentChanged(lightSource);
 }
 

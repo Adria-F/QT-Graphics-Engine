@@ -59,6 +59,7 @@ DeferredRenderer::DeferredRenderer() :
     addTexture("Position");
     addTexture("Normals");
     addTexture("Color");
+    addTexture("Light Circles");
 }
 
 DeferredRenderer::~DeferredRenderer()
@@ -153,6 +154,16 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
+    if (fboLightCircles == 0) gl->glDeleteTextures(1, &fboLightCircles);
+    gl->glGenTextures(1, &fboLightCircles);
+    gl->glBindTexture(GL_TEXTURE_2D, fboLightCircles);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
     if (fboDepth == 0) gl->glDeleteTextures(1, &fboDepth);
     gl->glGenTextures(1, &fboDepth);
     gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
@@ -189,8 +200,9 @@ void DeferredRenderer::passLights(Camera *camera)
     {
         //Set color attachments
         fbo->addColorAttachment(0, fboFinalRender);
-        unsigned int attachments[1] = { GL_COLOR_ATTACHMENT0};
-        gl->glDrawBuffers(1, attachments);
+        fbo->addColorAttachment(1, fboLightCircles);
+        unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+        gl->glDrawBuffers(2, attachments);
 
         // Clear color
         gl->glClearDepth(1.0);
@@ -218,6 +230,9 @@ void DeferredRenderer::passLights(Camera *camera)
         program.setUniformValue("cameraPos", camera->position);
         program.setUniformValue("viewportSize", QVector2D(camera->viewportWidth, camera->viewportHeight));
 
+        gl->glEnable(GL_BLEND);
+        gl->glBlendFunc(GL_ONE, GL_ONE);
+
         //Render spheres on lights
         for (auto entity : scene->entities)
         {
@@ -226,7 +241,13 @@ void DeferredRenderer::passLights(Camera *camera)
                 auto light = entity->lightSource;
                 auto transform = *entity->transform;
 
-                transform.scale = QVector3D(light->range*0.1f,light->range*0.1f, light->range*0.1f);
+                if (light->type == LightSource::Type::Point)
+                    transform.scale = QVector3D(light->radius,light->radius, light->radius);
+                else
+                {
+                    transform.position = QVector3D(0.0f,0.0f,0.0f);
+                    transform.scale = QVector3D(1.0f,1.0f,1.0f);
+                }
                 QMatrix4x4 worldMatrix = transform.matrix();
                 QMatrix4x4 worldViewMatrix = camera->viewMatrix * worldMatrix;
                 QMatrix3x3 normalMatrix = worldViewMatrix.normalMatrix();
@@ -238,12 +259,27 @@ void DeferredRenderer::passLights(Camera *camera)
                 program.setUniformValue("lightType", (int)light->type);
                 program.setUniformValue("lightPosition", transform.position);
                 program.setUniformValue("lightDirection", QVector3D(transform.matrix() * QVector4D(0.0, 1.0, 0.0, 0.0)));
-                program.setUniformValue("lightColor", light->color);
+                QVector3D color = {light->color.red()/255.0f, light->color.green()/255.0f, light->color.blue()/255.0f};
+                program.setUniformValue("lightColor", color);
                 program.setUniformValue("lightIntensity", light->intensity);
+                program.setUniformValue("lightRange", light->radius);
 
-                resourceManager->sphere->submeshes[0]->draw();
+                if (light->type == LightSource::Type::Point)
+                {
+                    gl->glEnable(GL_CULL_FACE);
+                    gl->glCullFace(GL_FRONT);
+                    resourceManager->sphere->submeshes[0]->draw();
+                }
+                else
+                {
+                    gl->glDisable(GL_CULL_FACE);
+                    resourceManager->quad->submeshes[0]->draw();
+                }
             }
         }
+
+        gl->glDisable(GL_BLEND);
+        gl->glDisable(GL_CULL_FACE);
 
         program.release();
     }
@@ -390,6 +426,8 @@ void DeferredRenderer::passBlit()
             gl->glBindTexture(GL_TEXTURE_2D, fboNormal);
         } else if(shownTexture() == "Color"){
             gl->glBindTexture(GL_TEXTURE_2D, fboColor);
+        } else if(shownTexture() == "Light Circles") {
+            gl->glBindTexture(GL_TEXTURE_2D, fboLightCircles);
         }
 
         resourceManager->quad->submeshes[0]->draw();

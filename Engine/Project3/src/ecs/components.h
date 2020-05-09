@@ -80,10 +80,13 @@ public:
     void read(const QJsonObject &json) override;
     void write(QJsonObject &json) override;
 
+    void calculateRadius();
+
     Type type = Type::Point;
     QColor color;
     float intensity = 1.0f;
-    float range = 10.0f;
+    float range = 1.0f;
+    float radius = 0.0f;
 };
 
 #endif // COMPONENTS_H

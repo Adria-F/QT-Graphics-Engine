@@ -67,7 +67,7 @@ void MeshRenderer::write(QJsonObject &json)
 LightSource::LightSource() :
     color(255, 255, 255, 255)
 {
-
+    calculateRadius();
 }
 
 void LightSource::read(const QJsonObject &json)
@@ -76,5 +76,14 @@ void LightSource::read(const QJsonObject &json)
 
 void LightSource::write(QJsonObject &json)
 {
+}
+
+void LightSource::calculateRadius()
+{
+    float constant  = 1.0;
+    float linear    = 1.0f/intensity;
+    float quadratic = 1.0f/(range*0.01);
+    float lightMax  = std::fmaxf(std::fmaxf(color.red(), color.green()), color.blue());
+    radius = (-linear +  std::sqrtf(linear * linear - 4 * quadratic * (constant - (256.0 / 5.0) * lightMax)))/ (2 * quadratic)*0.1;
 }
 
