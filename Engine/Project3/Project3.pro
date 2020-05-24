@@ -115,6 +115,8 @@ DISTFILES += \
     res/shaders/deferred_geometry.frag \
     res/shaders/deferred_lighting.frag \
     res/shaders/forward_shading.frag \
+    res/shaders/grid.frag \
+    res/shaders/grid.vert \
     res/shaders/standard_shading.vert \
     res/shaders/texture_view.frag \
     res/shaders/texture_view.vert

@@ -50,7 +50,8 @@ DeferredRenderer::DeferredRenderer() :
     fboPosition(QOpenGLTexture::Target2D),
     fboNormal(QOpenGLTexture::Target2D),
     fboColor(QOpenGLTexture::Target2D),
-    fboDepth(QOpenGLTexture::Target2D)
+    fboDepth(QOpenGLTexture::Target2D),
+    fboGrid(QOpenGLTexture::Target2D)
 {
     fboInfo = nullptr;
     fboFinal = nullptr;
@@ -60,6 +61,7 @@ DeferredRenderer::DeferredRenderer() :
     addTexture("Position");
     addTexture("Normals");
     addTexture("Color");
+    addTexture("Grid");
     addTexture("Light Circles");
 }
 
@@ -80,6 +82,14 @@ void DeferredRenderer::initialize()
     deferredGeometryProgram->vertexShaderFilename = "res/shaders/standard_shading.vert";
     deferredGeometryProgram->fragmentShaderFilename = "res/shaders/deferred_geometry.frag";
     deferredGeometryProgram->includeForSerialization = false;
+
+    ///Grid
+    gridProgram = resourceManager->createShaderProgram();
+    gridProgram->name = "Grid";
+    gridProgram->vertexShaderFilename = "res/shaders/grid.vert";
+    gridProgram->fragmentShaderFilename = "res/shaders/grid.frag";
+    gridProgram->includeForSerialization = false;
+
 
     ///Deferred Lighting
     deferredLightingProgram = resourceManager->createShaderProgram();
@@ -162,6 +172,16 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
+    if (fboGrid == 0) gl->glDeleteTextures(1, &fboGrid);
+    gl->glGenTextures(1, &fboGrid);
+    gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
     if (fboLightCircles == 0) gl->glDeleteTextures(1, &fboLightCircles);
     gl->glGenTextures(1, &fboLightCircles);
     gl->glBindTexture(GL_TEXTURE_2D, fboLightCircles);
@@ -187,16 +207,13 @@ void DeferredRenderer::resize(int w, int h)
     fboInfo->addColorAttachment(0, fboPosition);
     fboInfo->addColorAttachment(1, fboNormal);
     fboInfo->addColorAttachment(2, fboColor);
+    fboInfo->addColorAttachment(3, fboGrid);
     fboInfo->addDepthAttachment(fboDepth);
-    unsigned int attachments_info[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-    gl->glDrawBuffers(3, attachments_info);
     fboInfo->release();
 
     fboFinal->bind();
     fboFinal->addColorAttachment(0, fboFinalRender);
     fboFinal->addColorAttachment(1, fboLightCircles);
-    unsigned int attachments_final[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    gl->glDrawBuffers(2, attachments_final);
     fboFinal->release();
 }
 
@@ -208,6 +225,7 @@ void DeferredRenderer::render(Camera *camera)
     // Passes
     fboInfo->bind();
     passMeshes(camera);
+    passGrid(camera);
     fboInfo->release();
     fboFinal->bind();
     passLights(camera);
@@ -216,95 +234,6 @@ void DeferredRenderer::render(Camera *camera)
     gl->glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     passBlit();
-}
-
-void DeferredRenderer::passLights(Camera *camera)
-{
-    QOpenGLShaderProgram &program = deferredLightingProgram->program;
-
-    if (program.bind())
-    {
-        // Clear color
-        gl->glClearDepth(1.0);
-        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
-        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        //Set uniforms
-        program.setUniformValue("viewMatrix", camera->viewMatrix);
-
-        gl->glActiveTexture(GL_TEXTURE0);
-        gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
-        gl->glActiveTexture(GL_TEXTURE1);
-        gl->glBindTexture(GL_TEXTURE_2D, fboNormal);
-        gl->glActiveTexture(GL_TEXTURE2);
-        gl->glBindTexture(GL_TEXTURE_2D, fboColor);
-        program.setUniformValue("gPosition", 0);
-        program.setUniformValue("gNormal", 1);
-        program.setUniformValue("gColor", 2);
-
-        program.setUniformValue("cameraPos", camera->position);
-        program.setUniformValue("viewportSize", QVector2D(camera->viewportWidth, camera->viewportHeight));
-
-        gl->glEnable(GL_BLEND);
-        gl->glBlendFunc(GL_ONE, GL_ONE);
-
-        //Render spheres on lights
-        for (auto entity : scene->entities)
-        {
-            if (entity->active && entity->lightSource != nullptr)
-            {
-                auto light = entity->lightSource;
-                auto transform = *entity->transform;
-
-                if (light->type == LightSource::Type::Point)
-                    transform.scale = QVector3D(light->radius,light->radius, light->radius);
-                else
-                {
-                    transform.position = QVector3D(0.0f,0.0f,0.0f);
-                    transform.scale = QVector3D(1.0f,1.0f,1.0f);
-                }
-                QMatrix4x4 worldMatrix = transform.matrix();
-                QMatrix4x4 worldViewMatrix = camera->viewMatrix * worldMatrix;
-                QMatrix3x3 normalMatrix = worldViewMatrix.normalMatrix();
-                QMatrix4x4 projectionMatrix = camera->projectionMatrix;
-
-                if(light->type ==  LightSource::Type::Directional){
-                    projectionMatrix = QMatrix4x4();
-                    worldViewMatrix = QMatrix4x4();
-                }
-
-                program.setUniformValue("worldMatrix", worldMatrix);
-                program.setUniformValue("worldViewMatrix", worldViewMatrix);
-                program.setUniformValue("normalMatrix", normalMatrix);
-                program.setUniformValue("projectionMatrix", projectionMatrix);
-
-                program.setUniformValue("lightType", (int)light->type);
-                program.setUniformValue("lightPosition", transform.position);
-                program.setUniformValue("lightDirection", QVector3D(transform.matrix() * QVector4D(0.0, 1.0, 0.0, 0.0)));
-                QVector3D color = {light->color.red()/255.0f, light->color.green()/255.0f, light->color.blue()/255.0f};
-                program.setUniformValue("lightColor", color);
-                program.setUniformValue("lightIntensity", light->intensity);
-                program.setUniformValue("lightRange", light->radius);
-
-                if (light->type == LightSource::Type::Point)
-                {
-                    gl->glEnable(GL_CULL_FACE);
-                    gl->glCullFace(GL_FRONT);
-                    resourceManager->sphere->submeshes[0]->draw();
-                }
-                else
-                {
-                    gl->glDisable(GL_CULL_FACE);
-                    resourceManager->quad->submeshes[0]->draw();
-                }
-            }
-        }
-
-        gl->glDisable(GL_BLEND);
-        gl->glDisable(GL_CULL_FACE);
-
-        program.release();
-    }
 }
 
 void DeferredRenderer::passMeshes(Camera *camera)
@@ -317,6 +246,10 @@ void DeferredRenderer::passMeshes(Camera *camera)
         gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Set FBO buffers
+        unsigned int attachments_info[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+        gl->glDrawBuffers(3, attachments_info);
 
         //Set uniforms
         program.setUniformValue("viewMatrix", camera->viewMatrix);
@@ -421,6 +354,131 @@ void DeferredRenderer::passMeshes(Camera *camera)
     }
 }
 
+void DeferredRenderer::passGrid(Camera *camera){
+    gl->glEnable(GL_BLEND);
+    gl->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    QOpenGLShaderProgram &program = gridProgram->program;
+
+    // Set FBO buffers
+    GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT3};
+    gl->glDrawBuffers(1, drawBuffers);
+
+    if(program.bind()){
+        QVector4D cameraParameters = camera->getLeftRightBottomTop();
+        program.setUniformValue("left", cameraParameters.x());
+        program.setUniformValue("right", cameraParameters.y());
+        program.setUniformValue("bottom", cameraParameters.z());
+        program.setUniformValue("top", cameraParameters.w());
+        program.setUniformValue("znear", camera->znear);
+        program.setUniformValue("worldMatrix", camera->worldMatrix);
+        program.setUniformValue("viewMatrix", camera->viewMatrix);
+        program.setUniformValue("projectionMatrix", camera->projectionMatrix);
+
+        resourceManager->quad->submeshes[0]->draw();
+
+        program.release();
+    }
+
+
+    gl->glDisable(GL_BLEND);
+}
+
+void DeferredRenderer::passLights(Camera *camera)
+{
+    QOpenGLShaderProgram &program = deferredLightingProgram->program;
+
+    if (program.bind())
+    {
+        // Clear color
+        gl->glClearDepth(1.0);
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Set FBO buffers
+        unsigned int attachments_final[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+        gl->glDrawBuffers(2, attachments_final);
+
+        //Set uniforms
+        program.setUniformValue("viewMatrix", camera->viewMatrix);
+
+        gl->glActiveTexture(GL_TEXTURE0);
+        gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
+        gl->glActiveTexture(GL_TEXTURE1);
+        gl->glBindTexture(GL_TEXTURE_2D, fboNormal);
+        gl->glActiveTexture(GL_TEXTURE2);
+        gl->glBindTexture(GL_TEXTURE_2D, fboColor);
+        program.setUniformValue("gPosition", 0);
+        program.setUniformValue("gNormal", 1);
+        program.setUniformValue("gColor", 2);
+
+        program.setUniformValue("cameraPos", camera->position);
+        program.setUniformValue("viewportSize", QVector2D(camera->viewportWidth, camera->viewportHeight));
+
+        gl->glEnable(GL_BLEND);
+        gl->glBlendFunc(GL_ONE, GL_ONE);
+
+        //Render spheres on lights
+        for (auto entity : scene->entities)
+        {
+            if (entity->active && entity->lightSource != nullptr)
+            {
+                auto light = entity->lightSource;
+                auto transform = *entity->transform;
+
+                if (light->type == LightSource::Type::Point)
+                    transform.scale = QVector3D(light->radius,light->radius, light->radius);
+                else
+                {
+                    transform.position = QVector3D(0.0f,0.0f,0.0f);
+                    transform.scale = QVector3D(1.0f,1.0f,1.0f);
+                }
+                QMatrix4x4 worldMatrix = transform.matrix();
+                QMatrix4x4 worldViewMatrix = camera->viewMatrix * worldMatrix;
+                QMatrix3x3 normalMatrix = worldViewMatrix.normalMatrix();
+                QMatrix4x4 projectionMatrix = camera->projectionMatrix;
+
+                if(light->type ==  LightSource::Type::Directional){
+                    projectionMatrix = QMatrix4x4();
+                    worldViewMatrix = QMatrix4x4();
+                }
+
+                program.setUniformValue("worldMatrix", worldMatrix);
+                program.setUniformValue("worldViewMatrix", worldViewMatrix);
+                program.setUniformValue("normalMatrix", normalMatrix);
+                program.setUniformValue("projectionMatrix", projectionMatrix);
+
+                program.setUniformValue("lightType", (int)light->type);
+                program.setUniformValue("lightPosition", transform.position);
+                program.setUniformValue("lightDirection", QVector3D(transform.matrix() * QVector4D(0.0, 1.0, 0.0, 0.0)));
+                QVector3D color = {light->color.red()/255.0f, light->color.green()/255.0f, light->color.blue()/255.0f};
+                program.setUniformValue("lightColor", color);
+                program.setUniformValue("lightIntensity", light->intensity);
+                program.setUniformValue("lightRange", light->radius);
+
+                if (light->type == LightSource::Type::Point)
+                {
+                    gl->glEnable(GL_CULL_FACE);
+                    gl->glCullFace(GL_FRONT);
+                    resourceManager->sphere->submeshes[0]->draw();
+                }
+                else
+                {
+                    gl->glDisable(GL_CULL_FACE);
+                    resourceManager->quad->submeshes[0]->draw();
+                }
+            }
+        }
+
+        gl->glDisable(GL_BLEND);
+        gl->glDisable(GL_CULL_FACE);
+
+        program.release();
+    }
+}
+
+
+
 void DeferredRenderer::passBlit()
 {
     gl->glDisable(GL_DEPTH_TEST);
@@ -440,6 +498,8 @@ void DeferredRenderer::passBlit()
             gl->glBindTexture(GL_TEXTURE_2D, fboNormal);
         } else if(shownTexture() == "Color"){
             gl->glBindTexture(GL_TEXTURE_2D, fboColor);
+        } else if(shownTexture() == "Grid"){
+            gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
         } else if(shownTexture() == "Light Circles") {
             gl->glBindTexture(GL_TEXTURE_2D, fboLightCircles);
         }

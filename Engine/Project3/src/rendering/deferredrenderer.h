@@ -22,19 +22,24 @@ public:
 
 private:
 
+    void passGrid(Camera* camera);
     void passMeshes(Camera *camera);
     void passLights(Camera *camera);
     void passBlit();
 
     // Shaders
+
     ShaderProgram *deferredGeometryProgram = nullptr;
     ShaderProgram *deferredLightingProgram = nullptr;
-    ShaderProgram *blitProgram;
+    ShaderProgram *gridProgram = nullptr;
+    ShaderProgram *blitProgram = nullptr;
 
     FramebufferObject *fboInfo = nullptr;
     GLuint fboPosition = 0;
     GLuint fboNormal = 0;
     GLuint fboColor = 0;
+    GLuint fboGrid = 0;
+
 
     FramebufferObject *fboFinal = nullptr;
     GLuint fboFinalRender = 0;
