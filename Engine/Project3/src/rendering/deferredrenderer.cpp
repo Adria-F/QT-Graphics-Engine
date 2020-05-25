@@ -51,13 +51,16 @@ DeferredRenderer::DeferredRenderer() :
     fboNormal(QOpenGLTexture::Target2D),
     fboColor(QOpenGLTexture::Target2D),
     fboDepth(QOpenGLTexture::Target2D),
-    fboGrid(QOpenGLTexture::Target2D)
+    fboGrid(QOpenGLTexture::Target2D),
+    fboFinalTexture(QOpenGLTexture::Target2D)
 {
     fboInfo = nullptr;
+    fboLight = nullptr;
     fboFinal = nullptr;
 
     // List of textures
-    addTexture("Final Render");
+    addTexture("Final render");
+    addTexture("Lighting");
     addTexture("Position");
     addTexture("Normals");
     addTexture("Color");
@@ -68,7 +71,7 @@ DeferredRenderer::DeferredRenderer() :
 DeferredRenderer::~DeferredRenderer()
 {
     delete fboInfo;
-    delete fboFinal;
+    delete fboLight;
 }
 
 void DeferredRenderer::initialize()
@@ -79,36 +82,39 @@ void DeferredRenderer::initialize()
     ///Deferred Geometry
     deferredGeometryProgram = resourceManager->createShaderProgram();
     deferredGeometryProgram->name = "Forward shading";
-    deferredGeometryProgram->vertexShaderFilename = "res/shaders/standard_shading.vert";
-    deferredGeometryProgram->fragmentShaderFilename = "res/shaders/deferred_geometry.frag";
+    deferredGeometryProgram->vertexShaderFilename = "res/shaders/forward_shader/standard_shading.vert";
+    deferredGeometryProgram->fragmentShaderFilename = "res/shaders/lighting/deferred_geometry.frag";
     deferredGeometryProgram->includeForSerialization = false;
 
     ///Grid
     gridProgram = resourceManager->createShaderProgram();
     gridProgram->name = "Grid";
-    gridProgram->vertexShaderFilename = "res/shaders/grid.vert";
-    gridProgram->fragmentShaderFilename = "res/shaders/grid.frag";
+    gridProgram->vertexShaderFilename = "res/shaders/grid/grid.vert";
+    gridProgram->fragmentShaderFilename = "res/shaders/grid/grid.frag";
     gridProgram->includeForSerialization = false;
 
 
     ///Deferred Lighting
     deferredLightingProgram = resourceManager->createShaderProgram();
     deferredLightingProgram->name = "Forward shading";
-    deferredLightingProgram->vertexShaderFilename = "res/shaders/standard_shading.vert";
-    deferredLightingProgram->fragmentShaderFilename = "res/shaders/deferred_lighting.frag";
+    deferredLightingProgram->vertexShaderFilename = "res/shaders/forward_shader/standard_shading.vert";
+    deferredLightingProgram->fragmentShaderFilename = "res/shaders/lighting/deferred_lighting.frag";
     deferredLightingProgram->includeForSerialization = false;
 
     ///Blit to screen
     blitProgram = resourceManager->createShaderProgram();
     blitProgram->name = "Blit";
-    blitProgram->vertexShaderFilename = "res/shaders/blit.vert";
-    blitProgram->fragmentShaderFilename = "res/shaders/blit.frag";
+    blitProgram->vertexShaderFilename = "res/shaders/blit/blit.vert";
+    blitProgram->fragmentShaderFilename = "res/shaders/blit/blit.frag";
     blitProgram->includeForSerialization = false;
 
 
     // Create FBO
     fboInfo = new FramebufferObject;
     fboInfo->create();
+
+    fboLight = new FramebufferObject;
+    fboLight->create();
 
     fboFinal = new FramebufferObject;
     fboFinal->create();
@@ -120,8 +126,8 @@ void DeferredRenderer::finalize()
     fboInfo->destroy();
     delete fboInfo;
 
-    fboFinal->destroy();
-    delete fboFinal;
+    fboLight->destroy();
+    delete fboLight;
 }
 
 void DeferredRenderer::resize(int w, int h)
@@ -130,9 +136,9 @@ void DeferredRenderer::resize(int w, int h)
 
     // Regenerate render targets
 
-    if (fboFinalRender == 0) gl->glDeleteTextures(1, &fboFinalRender);
-    gl->glGenTextures(1, &fboFinalRender);
-    gl->glBindTexture(GL_TEXTURE_2D, fboFinalRender);
+    if (fboLighting == 0) gl->glDeleteTextures(1, &fboLighting);
+    gl->glGenTextures(1, &fboLighting);
+    gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -192,6 +198,7 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
+
     if (fboDepth == 0) gl->glDeleteTextures(1, &fboDepth);
     gl->glGenTextures(1, &fboDepth);
     gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
@@ -202,6 +209,16 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
+    if (fboFinalTexture == 0) gl->glDeleteTextures(1, &fboFinalTexture);
+    gl->glGenTextures(1, &fboFinalTexture);
+    gl->glBindTexture(GL_TEXTURE_2D, fboFinalTexture);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
     //Set color attachments
     fboInfo->bind();
     fboInfo->addColorAttachment(0, fboPosition);
@@ -211,9 +228,13 @@ void DeferredRenderer::resize(int w, int h)
     fboInfo->addDepthAttachment(fboDepth);
     fboInfo->release();
 
+    fboLight->bind();
+    fboLight->addColorAttachment(0, fboLighting);
+    fboLight->addColorAttachment(1, fboLightCircles);
+    fboLight->release();
+
     fboFinal->bind();
-    fboFinal->addColorAttachment(0, fboFinalRender);
-    fboFinal->addColorAttachment(1, fboLightCircles);
+    fboFinal->addColorAttachment(0, fboFinalTexture);
     fboFinal->release();
 }
 
@@ -221,15 +242,18 @@ void DeferredRenderer::render(Camera *camera)
 {
     OpenGLErrorGuard guard("DeferredRenderer::render()");
 
-
     // Passes
     fboInfo->bind();
     passMeshes(camera);
     passGrid(camera);
     fboInfo->release();
-    fboFinal->bind();
+    fboLight->bind();
     passLights(camera);
+    fboLight->release();
+    fboFinal->bind();
+    finalMix();
     fboFinal->release();
+
 
     gl->glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -242,14 +266,14 @@ void DeferredRenderer::passMeshes(Camera *camera)
 
     if (program.bind())
     {
+        // Set FBO buffers
+        unsigned int attachments_info[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+        gl->glDrawBuffers(3, attachments_info);
+
         // Clear color
         gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Set FBO buffers
-        unsigned int attachments_info[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-        gl->glDrawBuffers(3, attachments_info);
 
         //Set uniforms
         program.setUniformValue("viewMatrix", camera->viewMatrix);
@@ -360,11 +384,17 @@ void DeferredRenderer::passGrid(Camera *camera){
 
     QOpenGLShaderProgram &program = gridProgram->program;
 
-    // Set FBO buffers
-    GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT3};
-    gl->glDrawBuffers(1, drawBuffers);
-
     if(program.bind()){
+
+        // Set FBO buffers
+        GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT3};
+        gl->glDrawBuffers(1, drawBuffers);
+
+        // Clear color
+        gl->glClearDepth(1.0);
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         QVector4D cameraParameters = camera->getLeftRightBottomTop();
         program.setUniformValue("left", cameraParameters.x());
         program.setUniformValue("right", cameraParameters.y());
@@ -478,6 +508,37 @@ void DeferredRenderer::passLights(Camera *camera)
     }
 }
 
+void DeferredRenderer::finalMix(){
+    gl->glEnable(GL_BLEND);
+
+    QOpenGLShaderProgram &program = blitProgram->program;
+
+    // Set FBO buffers
+    GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
+    gl->glDrawBuffers(1, drawBuffers);
+
+    // Clear color
+    gl->glClearDepth(1.0);
+    gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+    gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if(program.bind()){
+        // Background
+        gl->glActiveTexture(GL_TEXTURE0);
+        gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
+        resourceManager->quad->submeshes[0]->draw();
+
+        // Lighting
+        gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
+        resourceManager->quad->submeshes[0]->draw();
+
+        gl->glDisable(GL_BLEND);
+        program.release();
+    }
+
+
+
+}
 
 
 void DeferredRenderer::passBlit()
@@ -491,8 +552,10 @@ void DeferredRenderer::passBlit()
         program.setUniformValue("colorTexture", 0);
         gl->glActiveTexture(GL_TEXTURE0);
 
-        if (shownTexture() == "Final Render") {
-            gl->glBindTexture(GL_TEXTURE_2D, fboFinalRender);
+        if (shownTexture() == "Final render") {
+            gl->glBindTexture(GL_TEXTURE_2D, fboFinalTexture);
+        } else if(shownTexture() == "Lighting"){
+            gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
         } else if (shownTexture() == "Position") {
             gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
         } else if(shownTexture() == "Normals") {

@@ -109,18 +109,6 @@ INCLUDEPATH += src/
 RESOURCES += \
     res/resources.qrc
 
-DISTFILES += \
-    res/shaders/blit.frag \
-    res/shaders/blit.vert \
-    res/shaders/deferred_geometry.frag \
-    res/shaders/deferred_lighting.frag \
-    res/shaders/forward_shading.frag \
-    res/shaders/grid.frag \
-    res/shaders/grid.vert \
-    res/shaders/standard_shading.vert \
-    res/shaders/texture_view.frag \
-    res/shaders/texture_view.vert
-
 # OpenGL
 win32: LIBS += -lopengl32
 
@@ -130,3 +118,16 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../ThirdParty/Assimp/li
 else:unix: LIBS += -L$$PWD/../ThirdParty/Assimp/lib/osx/ -lassimp
 INCLUDEPATH += $$PWD/../ThirdParty/Assimp/include
 DEPENDPATH += $$PWD/../ThirdParty/Assimp/include
+
+DISTFILES += \
+    res/shaders/blit/blit.frag \
+    res/shaders/blit/blit.vert \
+    res/shaders/final_mix/final_mix.frag \
+    res/shaders/forward_shader/forward_shading.frag \
+    res/shaders/forward_shader/standard_shading.vert \
+    res/shaders/grid/grid.frag \
+    res/shaders/grid/grid.vert \
+    res/shaders/lighting/deferred_geometry.frag \
+    res/shaders/lighting/deferred_lighting.frag \
+    res/shaders/texture_view/texture_view.frag \
+    res/shaders/texture_view/texture_view.vert

@@ -69,14 +69,14 @@ void ForwardRenderer::initialize()
 
     forwardProgram = resourceManager->createShaderProgram();
     forwardProgram->name = "Forward shading";
-    forwardProgram->vertexShaderFilename = "res/shaders/standard_shading.vert";
-    forwardProgram->fragmentShaderFilename = "res/shaders/forward_shading.frag";
+    forwardProgram->vertexShaderFilename = "res/shaders/forward_shader/standard_shading.vert";
+    forwardProgram->fragmentShaderFilename = "res/shaders/forward_shader/forward_shading.frag";
     forwardProgram->includeForSerialization = false;
 
     blitProgram = resourceManager->createShaderProgram();
     blitProgram->name = "Blit";
-    blitProgram->vertexShaderFilename = "res/shaders/blit.vert";
-    blitProgram->fragmentShaderFilename = "res/shaders/blit.frag";
+    blitProgram->vertexShaderFilename = "res/shaders/blit/blit.vert";
+    blitProgram->fragmentShaderFilename = "res/shaders/blit/blit.frag";
     blitProgram->includeForSerialization = false;
 
 

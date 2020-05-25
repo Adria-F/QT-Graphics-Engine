@@ -25,6 +25,7 @@ private:
     void passGrid(Camera* camera);
     void passMeshes(Camera *camera);
     void passLights(Camera *camera);
+    void finalMix();
     void passBlit();
 
     // Shaders
@@ -41,14 +42,16 @@ private:
     GLuint fboGrid = 0;
 
 
-    FramebufferObject *fboFinal = nullptr;
-    GLuint fboFinalRender = 0;
+    FramebufferObject *fboLight = nullptr;
+    GLuint fboLighting = 0;
     GLuint fboLightCircles = 0;
+
+    FramebufferObject *fboFinal = nullptr;
+    GLuint fboFinalTexture;
 
     // Unused
     GLuint fboSpecular = 0;
     GLuint fboDepth = 0;
-    GLuint grid = 0; // Maybe create another shader
 
 
 

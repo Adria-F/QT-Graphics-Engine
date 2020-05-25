@@ -33,8 +33,8 @@ void OpenGLWidgetTexture::initializeGL()
 
     // Program
     program.create();
-    program.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/texture_view.vert");
-    program.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/texture_view.frag");
+    program.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/texture_view/texture_view.vert");
+    program.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/texture_view/texture_view.frag");
     if (!program.link()) {
         qDebug("Error linking texture_view shaders.");
         return;
