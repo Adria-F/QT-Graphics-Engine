@@ -7,6 +7,7 @@ uniform float top;
 uniform float znear;
 uniform mat4 worldMatrix;
 uniform mat4 viewMatrix;
+uniform vec4 backgroundColor;
 
 in vec2 texCoord;
 out vec4 outColor;
@@ -20,7 +21,7 @@ float grid(vec3 worldPos, float gridStep){
 
 void main(void)
 {
-    outColor = vec4(1.0);
+    outColor = backgroundColor;
 
     // Eye direction
     vec3 eyedirEyespace;
@@ -45,16 +46,12 @@ void main(void)
     if(t > 0.0){
         vec3 hitWorldspace = eyeposWorldspace + eyedirWorldspace * t;
 
-        if(grid(hitWorldspace, 1.0) == 1.0){
-            outColor = vec4(vec3(1.0), 0.2);
-            if(grid(hitWorldspace, 10.0) == 1.0)
-                outColor.a = 0.5;
+        if(grid(hitWorldspace, 1.0) == 1.0)
+            outColor = vec4(vec3(1.0), 0.3);
+        if(grid(hitWorldspace, 10.0) == 1.0)
+            outColor.a = 1.0;
 
-            outColor.a *= clamp((20.0 /t), 0.0, 1.0);
-        }
-        else
-            discard;
-
+       outColor.a *= clamp((20.0 /t), 0.0, 1.0);
     }
     else{
         gl_FragDepth = 0.0;

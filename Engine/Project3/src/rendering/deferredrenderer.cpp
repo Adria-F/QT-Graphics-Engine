@@ -374,6 +374,7 @@ void DeferredRenderer::passGrid(Camera *camera){
         program.setUniformValue("worldMatrix", camera->worldMatrix);
         program.setUniformValue("viewMatrix", camera->viewMatrix);
         program.setUniformValue("projectionMatrix", camera->projectionMatrix);
+        program.setUniformValue("backgroundColor", miscSettings->backgroundColor);
 
         resourceManager->quad->submeshes[0]->draw();
 
