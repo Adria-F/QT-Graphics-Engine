@@ -396,6 +396,8 @@ void DeferredRenderer::passGrid(Camera *camera){
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         QVector4D cameraParameters = camera->getLeftRightBottomTop();
+
+        // Grid parameters
         program.setUniformValue("left", cameraParameters.x());
         program.setUniformValue("right", cameraParameters.y());
         program.setUniformValue("bottom", cameraParameters.z());
@@ -404,7 +406,11 @@ void DeferredRenderer::passGrid(Camera *camera){
         program.setUniformValue("worldMatrix", camera->worldMatrix);
         program.setUniformValue("viewMatrix", camera->viewMatrix);
         program.setUniformValue("projectionMatrix", camera->projectionMatrix);
+
+        // Background parameters
+        program.setUniformValue("viewportSize", QVector2D(camera->viewportWidth, camera->viewportHeight));
         program.setUniformValue("backgroundColor", miscSettings->backgroundColor);
+
 
         resourceManager->quad->submeshes[0]->draw();
 
