@@ -8,11 +8,14 @@ uniform float top;
 uniform float znear;
 uniform mat4 worldMatrix;
 uniform mat4 viewMatrix;
+uniform mat4 projectionMatrix;
 
 // Background
 uniform vec2 viewportSize;
 uniform vec4 backgroundColor;
 
+// Models depth
+uniform sampler2D depth;
 
 in vec2 texCoord;
 out vec4 outColor;
@@ -22,6 +25,14 @@ float grid(vec3 worldPos, float gridStep){
     vec2 grid = fwidth(worldPos.xz)/mod(worldPos.xz, gridStep);
     float line = step(1.0, max(grid.x, grid.y));
     return line;
+}
+
+float normalizeDepth(float rawDepth){
+    float f = 10000.0;
+    float n = 0.01;
+    float z = abs((2 * f * n) / ((rawDepth * 2.0 - 1.0) *(f-n)-(f+n)));
+
+    return z / 50.0;
 }
 
 vec4 computeBackgroundColor(){
@@ -49,6 +60,8 @@ vec4 computeBackgroundColor(){
 void main(void)
 {
     outColor = computeBackgroundColor();
+    float fragmentDepth = normalizeDepth(texture(depth, gl_FragCoord.xy / viewportSize).r);
+    //float fragmentDepth = texture(depth, gl_FragCoord.xy / viewportSize).r;
 
     // Eye direction
     vec3 eyedirEyespace;
@@ -70,8 +83,26 @@ void main(void)
     float denominator = dot(eyedirWorldspace, planeNormalWorldspace);
     float t = numerator/denominator;
 
-    if(t > 0.0){
+    if(t > 0.0){     
         vec3 hitWorldspace = eyeposWorldspace + eyedirWorldspace * t;
+
+        // Small bias to avoid zfighting
+        vec3 bias = (eyeposWorldspace - hitWorldspace) * 0.005;
+        // Compute grid depth
+        vec4 hitClip = projectionMatrix * viewMatrix * vec4(hitWorldspace + bias, 1.0);
+        float ndcDepth = hitClip.z / hitClip.w;
+
+
+        //float gridDepth = ((gl_DepthRange.diff * ndcDepth) + gl_DepthRange.near + gl_DepthRange.far) / 2.0f;
+        float gridDepth = normalizeDepth(ndcDepth);
+        //float gridDepth = ndcDepth;
+
+        //outColor.rgb = vec3(gridDepth);
+        //return;
+
+        if(gridDepth > fragmentDepth)
+            discard;
+
         vec4 gridColor = outColor;
 
         if(grid(hitWorldspace, 1.0) == 1.0)
@@ -82,7 +113,11 @@ void main(void)
 
         if(gridColor != outColor)
             gridColor.a *= clamp((20.0 /t), 0.0, 1.0);
+        else
+            discard;
 
         outColor = gridColor;
+    } else {
+        discard;
     }
 }

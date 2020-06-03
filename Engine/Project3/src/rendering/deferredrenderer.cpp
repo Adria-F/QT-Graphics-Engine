@@ -409,6 +409,10 @@ void DeferredRenderer::passGrid(Camera *camera){
         program.setUniformValue("viewMatrix", camera->viewMatrix);
         program.setUniformValue("projectionMatrix", camera->projectionMatrix);
 
+        // Models depth
+        gl->glActiveTexture(GL_TEXTURE0);
+        gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
+
         // Background parameters
         program.setUniformValue("viewportSize", QVector2D(camera->viewportWidth, camera->viewportHeight));
         program.setUniformValue("backgroundColor", miscSettings->backgroundColor);
