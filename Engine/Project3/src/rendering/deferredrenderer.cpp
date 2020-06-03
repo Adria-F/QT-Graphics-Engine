@@ -66,6 +66,7 @@ DeferredRenderer::DeferredRenderer() :
     addTexture("Color");
     addTexture("Grid");
     addTexture("Light Circles");
+    addTexture("Depth");
 }
 
 DeferredRenderer::~DeferredRenderer()
@@ -381,6 +382,7 @@ void DeferredRenderer::passMeshes(Camera *camera)
 void DeferredRenderer::passGrid(Camera *camera){
     gl->glEnable(GL_BLEND);
     gl->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    gl->glDepthMask(GL_FALSE);
 
     QOpenGLShaderProgram &program = gridProgram->program;
 
@@ -418,6 +420,7 @@ void DeferredRenderer::passGrid(Camera *camera){
     }
 
 
+    gl->glDepthMask(GL_TRUE);
     gl->glDisable(GL_BLEND);
 }
 
@@ -516,6 +519,7 @@ void DeferredRenderer::passLights(Camera *camera)
 
 void DeferredRenderer::finalMix(){
     gl->glEnable(GL_BLEND);
+    gl->glBlendFunc(GL_ONE, GL_ONE);
 
     QOpenGLShaderProgram &program = blitProgram->program;
 
@@ -529,8 +533,10 @@ void DeferredRenderer::finalMix(){
     gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     if(program.bind()){
-        // Background
+        program.setUniformValue("blitSimple", true);
         gl->glActiveTexture(GL_TEXTURE0);
+
+        // Background
         gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
         resourceManager->quad->submeshes[0]->draw();
 
@@ -541,9 +547,6 @@ void DeferredRenderer::finalMix(){
         gl->glDisable(GL_BLEND);
         program.release();
     }
-
-
-
 }
 
 
@@ -555,6 +558,10 @@ void DeferredRenderer::passBlit()
 
     if (program.bind())
     {
+        program.setUniformValue("blitSimple", false);
+        program.setUniformValue("blitDepth", false);
+        program.setUniformValue("blitAlpha", false);
+
         program.setUniformValue("colorTexture", 0);
         gl->glActiveTexture(GL_TEXTURE0);
 
@@ -572,6 +579,9 @@ void DeferredRenderer::passBlit()
             gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
         } else if(shownTexture() == "Light Circles") {
             gl->glBindTexture(GL_TEXTURE_2D, fboLightCircles);
+        } else if(shownTexture() == "Depth"){
+            program.setUniformValue("blitDepth", true);
+            gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
         }
 
         resourceManager->quad->submeshes[0]->draw();

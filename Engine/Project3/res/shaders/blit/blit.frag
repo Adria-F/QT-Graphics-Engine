@@ -3,6 +3,7 @@
 uniform sampler2D colorTexture;
 uniform bool blitAlpha;
 uniform bool blitDepth;
+uniform bool blitSimple;
 
 in vec2 texCoord;
 
@@ -11,6 +12,11 @@ out vec4 outColor;
 void main(void)
 {
     vec4 texel = texture(colorTexture, texCoord);
+
+    if(blitSimple){
+        outColor = texel;
+        return;
+    }
 
     if (blitAlpha) {
         outColor.rgb = vec3(texel.a);
@@ -26,4 +32,6 @@ void main(void)
     // Gamma correction
     outColor = pow(outColor, vec4(1.0/2.2));
     outColor.a = 1.0;
+
+
 }
