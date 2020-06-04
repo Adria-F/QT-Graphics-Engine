@@ -27,14 +27,6 @@ float grid(vec3 worldPos, float gridStep){
     return line;
 }
 
-float normalizeDepth(float rawDepth){
-    float f = 10000.0;
-    float n = 0.01;
-    float z = abs((2 * f * n) / ((rawDepth * 2.0 - 1.0) *(f-n)-(f+n)));
-
-    return z / 50.0;
-}
-
 vec4 computeBackgroundColor(){
     vec2 pixelCoord = gl_FragCoord.xy / viewportSize;
     vec3 rayViewspace = normalize(vec3(vec2(left, bottom) + pixelCoord * vec2(right - left, top - bottom), -znear));
@@ -60,8 +52,7 @@ vec4 computeBackgroundColor(){
 void main(void)
 {
     outColor = computeBackgroundColor();
-    float fragmentDepth = normalizeDepth(texture(depth, gl_FragCoord.xy / viewportSize).r);
-    //float fragmentDepth = texture(depth, gl_FragCoord.xy / viewportSize).r;
+    float fragmentDepth = texture(depth, gl_FragCoord.xy / viewportSize).r;
 
     // Eye direction
     vec3 eyedirEyespace;
@@ -91,15 +82,9 @@ void main(void)
         // Compute grid depth
         vec4 hitClip = projectionMatrix * viewMatrix * vec4(hitWorldspace + bias, 1.0);
         float ndcDepth = hitClip.z / hitClip.w;
+        float gridDepth = ((gl_DepthRange.diff * ndcDepth) + gl_DepthRange.near + gl_DepthRange.far) / 2.0f;
 
-
-        //float gridDepth = ((gl_DepthRange.diff * ndcDepth) + gl_DepthRange.near + gl_DepthRange.far) / 2.0f;
-        float gridDepth = normalizeDepth(ndcDepth);
-        //float gridDepth = ndcDepth;
-
-        //outColor.rgb = vec3(gridDepth);
-        //return;
-
+        // If this part of the grid is behind a model, discard it
         if(gridDepth > fragmentDepth)
             discard;
 
@@ -110,14 +95,17 @@ void main(void)
         if(grid(hitWorldspace, 10.0) == 1.0)
             gridColor.a = 1.0;
 
-
+        // Fade out the furthest parts of the gird
         if(gridColor != outColor)
             gridColor.a *= clamp((20.0 /t), 0.0, 1.0);
-        else
+        // If there is a model discard the background
+        else if(fragmentDepth < 1.0)
             discard;
 
+
         outColor = gridColor;
-    } else {
+    }else if(fragmentDepth < 1.0){
+        // If there is a model discard the background
         discard;
     }
 }
