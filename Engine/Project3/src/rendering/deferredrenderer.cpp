@@ -52,11 +52,14 @@ DeferredRenderer::DeferredRenderer() :
     fboColor(QOpenGLTexture::Target2D),
     fboDepth(QOpenGLTexture::Target2D),
     fboGrid(QOpenGLTexture::Target2D),
+    fboDOF(QOpenGLTexture::Target2D),
     fboFinalTexture(QOpenGLTexture::Target2D)
+
 {
     fboInfo = nullptr;
     fboLight = nullptr;
     fboFinal = nullptr;
+    fboPostProcess = nullptr;
 
     // List of textures
     addTexture("Final render");
@@ -65,6 +68,7 @@ DeferredRenderer::DeferredRenderer() :
     addTexture("Normals");
     addTexture("Color");
     addTexture("Grid");
+    addTexture("DOF");
     addTexture("Light Circles");
     addTexture("Depth");
 }
@@ -73,6 +77,8 @@ DeferredRenderer::~DeferredRenderer()
 {
     delete fboInfo;
     delete fboLight;
+    delete fboPostProcess;
+    delete fboFinal;
 }
 
 void DeferredRenderer::initialize()
@@ -102,6 +108,13 @@ void DeferredRenderer::initialize()
     deferredLightingProgram->fragmentShaderFilename = "res/shaders/lighting/deferred_lighting.frag";
     deferredLightingProgram->includeForSerialization = false;
 
+    /// DOF
+    DOFProgram = resourceManager->createShaderProgram();
+    DOFProgram->name = "DOF";
+    DOFProgram->vertexShaderFilename = "res/shaders/dof/dof.vert";
+    DOFProgram->fragmentShaderFilename = "res/shaders/dof/dof.frag";
+    DOFProgram->includeForSerialization = false;
+
     ///Blit to screen
     blitProgram = resourceManager->createShaderProgram();
     blitProgram->name = "Blit";
@@ -117,8 +130,12 @@ void DeferredRenderer::initialize()
     fboLight = new FramebufferObject;
     fboLight->create();
 
+    fboPostProcess = new FramebufferObject;
+    fboPostProcess->create();
+
     fboFinal = new FramebufferObject;
     fboFinal->create();
+
 
 }
 
@@ -129,6 +146,14 @@ void DeferredRenderer::finalize()
 
     fboLight->destroy();
     delete fboLight;
+
+    fboPostProcess->destroy();
+    delete fboPostProcess;
+
+    fboFinal->destroy();
+    delete fboFinal;
+
+
 }
 
 void DeferredRenderer::resize(int w, int h)
@@ -210,6 +235,17 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
+    if(fboDOF == 0) gl->glDeleteTextures(1, &fboDOF);
+    gl->glGenTextures(1, &fboDOF);
+    gl->glBindTexture(GL_TEXTURE_2D, fboDOF);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+
     if (fboFinalTexture == 0) gl->glDeleteTextures(1, &fboFinalTexture);
     gl->glGenTextures(1, &fboFinalTexture);
     gl->glBindTexture(GL_TEXTURE_2D, fboFinalTexture);
@@ -234,6 +270,10 @@ void DeferredRenderer::resize(int w, int h)
     fboLight->addColorAttachment(1, fboLightCircles);
     fboLight->release();
 
+    fboPostProcess->bind();
+    fboPostProcess->addColorAttachment(0, fboDOF);
+    fboPostProcess->release();
+
     fboFinal->bind();
     fboFinal->addColorAttachment(0, fboFinalTexture);
     fboFinal->release();
@@ -251,6 +291,10 @@ void DeferredRenderer::render(Camera *camera)
     fboLight->bind();
     passLights(camera);
     fboLight->release();
+    fboPostProcess->bind();
+    passDOF();
+    fboPostProcess->release();
+
     fboFinal->bind();
     finalMix();
     fboFinal->release();
@@ -414,7 +458,6 @@ void DeferredRenderer::passGrid(Camera *camera){
         gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
 
         // Background parameters
-        program.setUniformValue("viewportSize", QVector2D(camera->viewportWidth, camera->viewportHeight));
         program.setUniformValue("backgroundColor", miscSettings->backgroundColor);
 
 
@@ -521,22 +564,54 @@ void DeferredRenderer::passLights(Camera *camera)
     }
 }
 
+void DeferredRenderer::passDOF(){
+
+    QOpenGLShaderProgram &program = DOFProgram->program;
+
+    if(program.bind()){
+
+        // Set FBO buffers
+        GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
+        gl->glDrawBuffers(1, drawBuffers);
+
+        // Clear color
+        gl->glClearDepth(1.0);
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Models depth
+        gl->glActiveTexture(GL_TEXTURE0);
+        gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
+        // Color
+        gl->glActiveTexture(GL_TEXTURE1);
+        gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
+
+        program.setUniformValue("depth", 0);
+        program.setUniformValue("color", 1);
+
+        program.setUniformValue("depthFocus", camera->depthFocus);
+
+        resourceManager->quad->submeshes[0]->draw();
+
+        program.release();
+    }
+}
+
 void DeferredRenderer::finalMix(){
     gl->glEnable(GL_BLEND);
     gl->glBlendFunc(GL_ONE, GL_ONE);
 
     QOpenGLShaderProgram &program = blitProgram->program;
-
-    // Set FBO buffers
-    GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
-    gl->glDrawBuffers(1, drawBuffers);
-
-    // Clear color
-    gl->glClearDepth(1.0);
-    gl->glClearColor(0.0f,0.0f,0.0f,1.0);
-    gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     if(program.bind()){
+        // Set FBO buffers
+        GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
+        gl->glDrawBuffers(1, drawBuffers);
+
+        // Clear color
+        gl->glClearDepth(1.0);
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         program.setUniformValue("blitSimple", true);
         gl->glActiveTexture(GL_TEXTURE0);
 
@@ -583,6 +658,8 @@ void DeferredRenderer::passBlit()
             gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
         } else if(shownTexture() == "Light Circles") {
             gl->glBindTexture(GL_TEXTURE_2D, fboLightCircles);
+        } else if(shownTexture() == "DOF"){
+            gl->glBindTexture(GL_TEXTURE_2D, fboDOF);
         } else if(shownTexture() == "Depth"){
             program.setUniformValue("blitDepth", true);
             gl->glBindTexture(GL_TEXTURE_2D, fboDepth);

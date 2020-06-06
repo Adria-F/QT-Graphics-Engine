@@ -26,6 +26,7 @@ public slots:
     void onMaxSubmeshesChanged(int n);
     void onBackgroundColorClicked();
     void onVisualHintChanged();
+    void onDepthFocusChanged(double newDepthFocus);
 
 private:
     Ui::MiscSettingsWidget *ui;

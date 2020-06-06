@@ -19,6 +19,7 @@ MiscSettingsWidget::MiscSettingsWidget(QWidget *parent) :
     connect(ui->checkBoxGrid, SIGNAL(clicked()), this, SLOT(onVisualHintChanged()));
     connect(ui->checkBoxLightSources, SIGNAL(clicked()), this, SLOT(onVisualHintChanged()));
     connect(ui->checkBoxSelectionOutline, SIGNAL(clicked()), this, SLOT(onVisualHintChanged()));
+    connect(ui->depthFocus, SIGNAL(valueChanged(double)), this, SLOT(onDepthFocusChanged(double)));
 }
 
 MiscSettingsWidget::~MiscSettingsWidget()
@@ -60,5 +61,10 @@ void MiscSettingsWidget::onBackgroundColorClicked()
 void MiscSettingsWidget::onVisualHintChanged()
 {
     miscSettings->renderLightSources = ui->checkBoxLightSources->isChecked();
+    emit settingsChanged();
+}
+
+void MiscSettingsWidget::onDepthFocusChanged(double newDepthFocus){
+    camera->depthFocus = newDepthFocus;
     emit settingsChanged();
 }

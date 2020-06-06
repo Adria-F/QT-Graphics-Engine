@@ -25,6 +25,7 @@ private:
     void passGrid(Camera* camera);
     void passMeshes(Camera *camera);
     void passLights(Camera *camera);
+    void passDOF();
     void finalMix();
     void passBlit();
 
@@ -33,7 +34,9 @@ private:
     ShaderProgram *deferredGeometryProgram = nullptr;
     ShaderProgram *deferredLightingProgram = nullptr;
     ShaderProgram *gridProgram = nullptr;
+    ShaderProgram *DOFProgram = nullptr;
     ShaderProgram *blitProgram = nullptr;
+
 
     FramebufferObject *fboInfo = nullptr;
     GLuint fboPosition = 0;
@@ -45,6 +48,9 @@ private:
     FramebufferObject *fboLight = nullptr;
     GLuint fboLighting = 0;
     GLuint fboLightCircles = 0;
+
+    FramebufferObject *fboPostProcess = nullptr;
+    GLuint fboDOF;
 
     FramebufferObject *fboFinal = nullptr;
     GLuint fboFinalTexture;

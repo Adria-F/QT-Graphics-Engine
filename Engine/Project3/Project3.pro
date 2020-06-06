@@ -122,6 +122,8 @@ DEPENDPATH += $$PWD/../ThirdParty/Assimp/include
 DISTFILES += \
     res/shaders/blit/blit.frag \
     res/shaders/blit/blit.vert \
+    res/shaders/dof/dof.frag \
+    res/shaders/dof/dof.vert \
     res/shaders/final_mix/final_mix.frag \
     res/shaders/forward_shader/forward_shading.frag \
     res/shaders/forward_shader/standard_shading.vert \

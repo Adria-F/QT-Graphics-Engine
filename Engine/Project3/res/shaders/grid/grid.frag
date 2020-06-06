@@ -11,7 +11,6 @@ uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
 
 // Background
-uniform vec2 viewportSize;
 uniform vec4 backgroundColor;
 
 // Models depth
@@ -28,8 +27,7 @@ float grid(vec3 worldPos, float gridStep){
 }
 
 vec4 computeBackgroundColor(){
-    vec2 pixelCoord = gl_FragCoord.xy / viewportSize;
-    vec3 rayViewspace = normalize(vec3(vec2(left, bottom) + pixelCoord * vec2(right - left, top - bottom), -znear));
+    vec3 rayViewspace = normalize(vec3(vec2(left, bottom) + texCoord * vec2(right - left, top - bottom), -znear));
     vec3 rayWorldspace = vec3(worldMatrix * vec4(rayViewspace, 0.0));
     vec3 horizonWorldspace = rayWorldspace * vec3(1.0, 0.0, 1.0);
     float elevation = (1.0 - dot(rayWorldspace, horizonWorldspace)) * sign(rayWorldspace.y);
@@ -52,7 +50,7 @@ vec4 computeBackgroundColor(){
 void main(void)
 {
     outColor = computeBackgroundColor();
-    float fragmentDepth = texture(depth, gl_FragCoord.xy / viewportSize).r;
+    float fragmentDepth = texture(depth, texCoord).r;
 
     // Eye direction
     vec3 eyedirEyespace;
