@@ -158,8 +158,7 @@ void ForwardRenderer::passMeshes(Camera *camera)
 
     if (program.bind())
     {
-        unsigned int attachments[1] = { GL_COLOR_ATTACHMENT0};
-        gl->glDrawBuffers(1, attachments);
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
         program.setUniformValue("viewMatrix", camera->viewMatrix);
         program.setUniformValue("projectionMatrix", camera->projectionMatrix);

@@ -52,6 +52,7 @@ DeferredRenderer::DeferredRenderer() :
     fboColor(QOpenGLTexture::Target2D),
     fboDepth(QOpenGLTexture::Target2D),
     fboGrid(QOpenGLTexture::Target2D),
+    fboDOFV(QOpenGLTexture::Target2D),
     fboDOF(QOpenGLTexture::Target2D),
     fboFinalTexture(QOpenGLTexture::Target2D)
 
@@ -235,6 +236,16 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
+    if(fboDOFV == 0) gl->glDeleteTextures(1, &fboDOFV);
+    gl->glGenTextures(1, &fboDOFV);
+    gl->glBindTexture(GL_TEXTURE_2D, fboDOFV);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
     if(fboDOF == 0) gl->glDeleteTextures(1, &fboDOF);
     gl->glGenTextures(1, &fboDOF);
     gl->glBindTexture(GL_TEXTURE_2D, fboDOF);
@@ -271,7 +282,8 @@ void DeferredRenderer::resize(int w, int h)
     fboLight->release();
 
     fboPostProcess->bind();
-    fboPostProcess->addColorAttachment(0, fboDOF);
+    fboPostProcess->addColorAttachment(0, fboDOFV);
+    fboPostProcess->addColorAttachment(1, fboDOF);
     fboPostProcess->release();
 
     fboFinal->bind();
@@ -433,8 +445,7 @@ void DeferredRenderer::passGrid(Camera *camera){
     if(program.bind()){
 
         // Set FBO buffers
-        GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT3};
-        gl->glDrawBuffers(1, drawBuffers);
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT3);
 
         // Clear color
         gl->glClearDepth(1.0);
@@ -570,28 +581,47 @@ void DeferredRenderer::passDOF(){
 
     if(program.bind()){
 
-        // Set FBO buffers
-        GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
-        gl->glDrawBuffers(1, drawBuffers);
+        // General uniforms
+        gl->glActiveTexture(GL_TEXTURE0);
+        gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
+        program.setUniformValue("depth", 0);
+        program.setUniformValue("color", 1);
+        program.setUniformValue("depthFocus", camera->depthFocus);
+
+        // Vertical pass
+
+        // Draw on fboDOFV
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
         // Clear color
         gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Models depth
-        gl->glActiveTexture(GL_TEXTURE0);
-        gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
-        // Color
+        // Color texture
         gl->glActiveTexture(GL_TEXTURE1);
         gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
-
-        program.setUniformValue("depth", 0);
-        program.setUniformValue("color", 1);
-
-        program.setUniformValue("depthFocus", camera->depthFocus);
+        // Vertical increment
+        program.setUniformValue("texCoordInc", QVector2D(0.0, 1.0));
 
         resourceManager->quad->submeshes[0]->draw();
+
+        // Horizontal pass
+        // Draw on fboDOF
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT1);
+
+        // Clear color
+        gl->glClearDepth(1.0);
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // fboDOFV texture
+        gl->glActiveTexture(GL_TEXTURE1);
+        gl->glBindTexture(GL_TEXTURE_2D, fboDOFV);
+        // Horizontal increment
+        program.setUniformValue("texCoordInc", QVector2D(1.0, 0.0));
+        resourceManager->quad->submeshes[0]->draw();
+
 
         program.release();
     }
@@ -604,8 +634,7 @@ void DeferredRenderer::finalMix(){
     QOpenGLShaderProgram &program = blitProgram->program;
     if(program.bind()){
         // Set FBO buffers
-        GLenum drawBuffers[] = {GL_COLOR_ATTACHMENT0};
-        gl->glDrawBuffers(1, drawBuffers);
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
         // Clear color
         gl->glClearDepth(1.0);

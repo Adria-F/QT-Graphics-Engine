@@ -3,6 +3,7 @@
 uniform sampler2D depth;
 uniform sampler2D color;
 uniform float depthFocus;
+uniform vec2 texCoordInc;
 
 in vec2 texCoord;
 out vec4 outColor;
@@ -23,7 +24,7 @@ void main(void){
     weights[10] = 0.035822;
 
     //Uniform
-    vec2 texCoordInc = vec2(0.0, 1.0);
+
 
     vec3 blurredColor = vec3(0.0);
     vec2 uv = texCoord - texCoordInc * 5.0;
