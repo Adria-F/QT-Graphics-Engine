@@ -589,7 +589,6 @@ void DeferredRenderer::passDOF(){
         program.setUniformValue("depthFocus", camera->depthFocus);
 
         // Vertical pass
-
         // Draw on fboDOFV
         gl->glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
@@ -620,8 +619,8 @@ void DeferredRenderer::passDOF(){
         gl->glBindTexture(GL_TEXTURE_2D, fboDOFV);
         // Horizontal increment
         program.setUniformValue("texCoordInc", QVector2D(1.0, 0.0));
-        resourceManager->quad->submeshes[0]->draw();
 
+        resourceManager->quad->submeshes[0]->draw();
 
         program.release();
     }
