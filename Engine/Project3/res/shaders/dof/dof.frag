@@ -3,7 +3,9 @@
 uniform sampler2D depth;
 uniform sampler2D color;
 uniform float depthFocus;
+uniform vec2 viewportSize;
 uniform vec2 texCoordInc;
+
 
 in vec2 texCoord;
 out vec4 outColor;
@@ -24,15 +26,14 @@ void main(void){
     weights[10] = 0.035822;
 
     //Uniform
-
-
+    vec2 pixelInc = texCoordInc / viewportSize;
     vec3 blurredColor = vec3(0.0);
-    vec2 uv = texCoord - texCoordInc * 5.0;
+    vec2 uv = texCoord - pixelInc * 5.0;
     float sumWeights = 0.0f;
     for(int i = 0; i < 11; ++i){
         blurredColor += texture(color, uv).rgb * weights[i];
         sumWeights += weights[i];
-        uv += texCoordInc;
+        uv += pixelInc;
     }
 
     blurredColor /= sumWeights;
