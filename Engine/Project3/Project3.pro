@@ -131,5 +131,7 @@ DISTFILES += \
     res/shaders/grid/grid.vert \
     res/shaders/lighting/deferred_geometry.frag \
     res/shaders/lighting/deferred_lighting.frag \
+    res/shaders/mouse_picking/mousePicking.frag \
+    res/shaders/mouse_picking/mousePicking.vert \
     res/shaders/texture_view/texture_view.frag \
     res/shaders/texture_view/texture_view.vert

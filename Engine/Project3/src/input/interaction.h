@@ -10,6 +10,8 @@ public:
     void postUpdate();
 
 
+    bool renderIdentifiers = false;
+
 private:
 
     bool idle();

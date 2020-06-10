@@ -20,11 +20,15 @@ public:
     void resize(int width, int height) override;
     void render(Camera *camera) override;
 
+    void renderIdentifiers(Camera* camera);
+    unsigned int getClickedIdentifier(int x, int y);
+
 private:
 
     void passGrid(Camera* camera);
     void passMeshes(Camera *camera);
     void passLights(Camera *camera);
+    void passIdentifiers(Camera *camera);
     void passDOF();
     void finalMix();
     void passBlit();
@@ -36,6 +40,7 @@ private:
     ShaderProgram *gridProgram = nullptr;
     ShaderProgram *DOFProgram = nullptr;
     ShaderProgram *blitProgram = nullptr;
+    ShaderProgram *mousePickProgram = nullptr;
 
 
     FramebufferObject *fboInfo = nullptr;
@@ -44,6 +49,8 @@ private:
     GLuint fboColor = 0;
     GLuint fboGrid = 0;
 
+    FramebufferObject *fboMousePick = nullptr;
+    GLuint fboIdentifiers = 0;
 
     FramebufferObject *fboLight = nullptr;
     GLuint fboLighting = 0;
@@ -59,10 +66,6 @@ private:
     // Unused
     GLuint fboSpecular = 0;
     GLuint fboDepth = 0;
-
-
-
-
 };
 
 #endif // DEFERREDRENDERER_H

@@ -110,6 +110,20 @@ void OpenGLWidget::paintGL()
     camera->prepareMatrices();
 
     renderer->render(camera);
+    if (interaction->renderIdentifiers)
+    {
+        ((DeferredRenderer*)deferredRenderer)->renderIdentifiers(camera);
+        unsigned int objectId = ((DeferredRenderer*)deferredRenderer)->getClickedIdentifier(input->mousex, camera->viewportHeight - input->mousey);
+        for (auto entity : scene->entities)
+        {
+            if (entity->active && entity->id == objectId)
+            {
+                emit selection->entitySelected((entity));
+            }
+         }
+
+        interaction->renderIdentifiers = false;
+    }
 }
 
 void OpenGLWidget::finalizeGL()

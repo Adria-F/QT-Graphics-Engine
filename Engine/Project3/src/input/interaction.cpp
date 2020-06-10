@@ -36,6 +36,8 @@ bool Interaction::idle()
     else if (input->mouseButtons[Qt::LeftButton] == MouseButtonState::Press)
     {
         // TODO: Left click
+        emit selection->leftClick();
+        renderIdentifiers = true;
     }
     else if(selection->count > 0)
     {

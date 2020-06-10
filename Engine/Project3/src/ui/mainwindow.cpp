@@ -131,6 +131,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(openGLWidget, SIGNAL(interacted()), this, SLOT(onEntityChangedInteractively()));
     connect(miscSettingsWidget, SIGNAL(settingsChanged()), this, SLOT(updateRender()));
 
+    connect(selection, SIGNAL(leftClick()), this, SLOT(updateRender()));
+
     connect(selection, SIGNAL(entitySelected(Entity *)), this, SLOT(onEntitySelectedFromSceneView(Entity *)));
 
     hierarchyWidget->updateLayout();

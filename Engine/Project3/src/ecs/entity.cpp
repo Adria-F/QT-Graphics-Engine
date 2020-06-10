@@ -1,12 +1,20 @@
 #include "entity.h"
 #include "globals.h"
 
+#include <QRandomGenerator>
+#include <time.h>
+
 Entity::Entity() :
     name("Entity")
 {
     for (int i = 0; i < MAX_COMPONENTS; ++i)
         components[i] = nullptr;
     transform = new Transform;
+
+    QRandomGenerator generator;
+    generator.seed((time(NULL)));
+    double range01 = generator.generateDouble();
+    id = range01*256*256*256;
 }
 
 Entity::~Entity()
@@ -102,4 +110,13 @@ void Entity::read(const QJsonObject &json)
 
 void Entity::write(QJsonObject &json)
 {
+}
+
+QVector3D Entity::getIDColor() const
+{
+    int r = (id & 0x000000FF) >>  0;
+    int g = (id & 0x0000FF00) >>  8;
+    int b = (id & 0x00FF0000) >> 16;
+
+    return QVector3D(r,g,b)/255.0;
 }

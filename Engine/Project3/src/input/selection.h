@@ -22,6 +22,7 @@ public:
 
 signals:
 
+    void leftClick();
     void entitySelected(Entity *);
 
 public slots:

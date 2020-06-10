@@ -50,6 +50,7 @@ DeferredRenderer::DeferredRenderer() :
     fboPosition(QOpenGLTexture::Target2D),
     fboNormal(QOpenGLTexture::Target2D),
     fboColor(QOpenGLTexture::Target2D),
+    fboIdentifiers(QOpenGLTexture::Target2D),
     fboDepth(QOpenGLTexture::Target2D),
     fboGrid(QOpenGLTexture::Target2D),
     fboDOFV(QOpenGLTexture::Target2D),
@@ -58,6 +59,7 @@ DeferredRenderer::DeferredRenderer() :
 
 {
     fboInfo = nullptr;
+    fboMousePick = nullptr;
     fboLight = nullptr;
     fboFinal = nullptr;
     fboPostProcess = nullptr;
@@ -70,6 +72,7 @@ DeferredRenderer::DeferredRenderer() :
     addTexture("Color");
     addTexture("Grid");
     addTexture("DOF");
+    addTexture("Object Identifiers");
     addTexture("Light Circles");
     addTexture("Depth");
 }
@@ -77,6 +80,7 @@ DeferredRenderer::DeferredRenderer() :
 DeferredRenderer::~DeferredRenderer()
 {
     delete fboInfo;
+    delete fboMousePick;
     delete fboLight;
     delete fboPostProcess;
     delete fboFinal;
@@ -93,6 +97,13 @@ void DeferredRenderer::initialize()
     deferredGeometryProgram->vertexShaderFilename = "res/shaders/forward_shader/standard_shading.vert";
     deferredGeometryProgram->fragmentShaderFilename = "res/shaders/lighting/deferred_geometry.frag";
     deferredGeometryProgram->includeForSerialization = false;
+
+    ///Mouse Picking
+    mousePickProgram = resourceManager->createShaderProgram();
+    mousePickProgram->name = "Mouse Picking";
+    mousePickProgram->vertexShaderFilename = "res/shaders/mouse_picking/mousePicking.vert";
+    mousePickProgram->fragmentShaderFilename = "res/shaders/mouse_picking/mousePicking.frag";
+    mousePickProgram->includeForSerialization = false;
 
     ///Grid
     gridProgram = resourceManager->createShaderProgram();
@@ -128,6 +139,9 @@ void DeferredRenderer::initialize()
     fboInfo = new FramebufferObject;
     fboInfo->create();
 
+    fboMousePick = new FramebufferObject;
+    fboMousePick->create();
+
     fboLight = new FramebufferObject;
     fboLight->create();
 
@@ -136,14 +150,15 @@ void DeferredRenderer::initialize()
 
     fboFinal = new FramebufferObject;
     fboFinal->create();
-
-
 }
 
 void DeferredRenderer::finalize()
 {
     fboInfo->destroy();
     delete fboInfo;
+
+    fboMousePick->destroy();
+    delete fboMousePick;
 
     fboLight->destroy();
     delete fboLight;
@@ -204,6 +219,16 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    if (fboIdentifiers == 0) gl->glDeleteTextures(1, &fboIdentifiers);
+    gl->glGenTextures(1, &fboIdentifiers);
+    gl->glBindTexture(GL_TEXTURE_2D, fboIdentifiers);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_FLOAT, nullptr);
 
     if (fboGrid == 0) gl->glDeleteTextures(1, &fboGrid);
     gl->glGenTextures(1, &fboGrid);
@@ -276,6 +301,11 @@ void DeferredRenderer::resize(int w, int h)
     fboInfo->addDepthAttachment(fboDepth);
     fboInfo->release();
 
+    fboMousePick->bind();
+    fboMousePick->addColorAttachment(0, fboIdentifiers);
+    fboMousePick->addDepthAttachment(fboDepth);
+    fboMousePick->release();
+
     fboLight->bind();
     fboLight->addColorAttachment(0, fboLighting);
     fboLight->addColorAttachment(1, fboLightCircles);
@@ -315,6 +345,25 @@ void DeferredRenderer::render(Camera *camera)
     gl->glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     passBlit();
+}
+
+void DeferredRenderer::renderIdentifiers(Camera* camera)
+{
+    fboMousePick->bind();
+    passIdentifiers(camera);
+    fboMousePick->release();
+}
+
+unsigned int DeferredRenderer::getClickedIdentifier(int x, int y)
+{
+    fboMousePick->bind();
+
+    float data[3];
+    gl->glReadPixels(x, y, 1, 1, GL_RGB, GL_FLOAT, data);
+
+    fboMousePick->release();
+
+    return (data[0]+data[1]*256+data[2]*256*256)*255.0;
 }
 
 void DeferredRenderer::passMeshes(Camera *camera)
@@ -575,6 +624,77 @@ void DeferredRenderer::passLights(Camera *camera)
     }
 }
 
+void DeferredRenderer::passIdentifiers(Camera *camera)
+{
+    QOpenGLShaderProgram &program = mousePickProgram->program;
+
+    if (program.bind())
+    {
+        // Set FBO buffers
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        // Clear color
+        gl->glClearDepth(1.0);
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        //Set uniforms
+        program.setUniformValue("projectionMatrix", camera->projectionMatrix);
+
+        QVector<MeshRenderer*> meshRenderers;
+        QVector<LightSource*> lightSources;
+
+        // Get components
+        for (auto entity : scene->entities)
+        {
+            if (entity->active)
+            {
+                if (entity->meshRenderer != nullptr) { meshRenderers.push_back(entity->meshRenderer); }
+                if (entity->lightSource != nullptr) { lightSources.push_back(entity->lightSource); }
+            }
+        }
+
+        // Meshes
+        for (auto meshRenderer : meshRenderers)
+        {
+            auto mesh = meshRenderer->mesh;
+
+            if (mesh != nullptr)
+            {
+                QMatrix4x4 worldViewMatrix = camera->viewMatrix * meshRenderer->entity->transform->matrix();
+
+                program.setUniformValue("worldViewMatrix", worldViewMatrix);
+                program.setUniformValue("colorId", meshRenderer->entity->getIDColor());
+
+                for (auto submesh : mesh->submeshes)
+                {
+                    submesh->draw();
+                }
+            }
+        }
+
+        // Light spheres
+        if (miscSettings->renderLightSources)
+        {
+            for (auto lightSource : lightSources)
+            {
+                QMatrix4x4 worldMatrix = lightSource->entity->transform->matrix();
+                QMatrix4x4 scaleMatrix; scaleMatrix.scale(0.1f, 0.1f, 0.1f);
+                QMatrix4x4 worldViewMatrix = camera->viewMatrix * worldMatrix * scaleMatrix;
+
+                program.setUniformValue("worldViewMatrix", worldViewMatrix);
+                program.setUniformValue("colorId", lightSource->entity->getIDColor());
+
+                for (auto submesh : resourceManager->sphere->submeshes)
+                {
+                    submesh->draw();
+                }
+            }
+        }
+
+        program.release();
+    }
+}
+
 void DeferredRenderer::passDOF(){
 
     QOpenGLShaderProgram &program = DOFProgram->program;
@@ -688,6 +808,8 @@ void DeferredRenderer::passBlit()
             gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
         } else if(shownTexture() == "Light Circles") {
             gl->glBindTexture(GL_TEXTURE_2D, fboLightCircles);
+        } else if(shownTexture() == "Object Identifiers") {
+            gl->glBindTexture(GL_TEXTURE_2D, fboIdentifiers);
         } else if(shownTexture() == "DOF"){
             gl->glBindTexture(GL_TEXTURE_2D, fboDOF);
         } else if(shownTexture() == "Depth"){

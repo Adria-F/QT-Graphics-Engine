@@ -5,7 +5,6 @@
 #include <QFile>
 #include <QJsonObject>
 
-
 const char *Mesh::TypeName = "Mesh";
 
 
@@ -16,7 +15,7 @@ ibo(QOpenGLBuffer::Type::IndexBuffer)
     data_size = size_t(in_data_size);
     data = new unsigned char[data_size];
     memcpy(data, in_data, data_size);
-	
+	  
     computeBounds();
 }
 
@@ -151,7 +150,7 @@ void SubMesh::computeBounds()
 
 Mesh::Mesh()
 {
-	
+
 }
 
 Mesh::~Mesh()

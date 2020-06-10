@@ -21,6 +21,8 @@ public:
     void read(const QJsonObject &json);
     void write(QJsonObject &json);
 
+    QVector3D getIDColor() const;
+
     QString name;
 
     union
@@ -35,6 +37,8 @@ public:
     };
 
     bool active = true;
+
+    unsigned int id = 0;
 };
 
 #endif // ENTITY_H
