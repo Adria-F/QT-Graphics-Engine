@@ -29,6 +29,16 @@ void Selection::select(Entity *entity)
     emit entitySelected(entity);
 }
 
+bool Selection::IsEntitySelected(Entity *checkEntity)
+{
+    for (auto entity : entities)
+    {
+        if (checkEntity == entity)
+            return true;
+    }
+    return false;
+}
+
 void Selection::onEntitySelectedFromEditor(Entity *entity)
 {
     if (entity != nullptr) {

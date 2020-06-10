@@ -17,6 +17,8 @@ public:
     void clear();
     void select(Entity *);
 
+    bool IsEntitySelected(Entity *);
+
     int count = 0;
     Entity *entities[MAX_SELECTED_ENTITIES] = {};
 

@@ -50,6 +50,7 @@ DeferredRenderer::DeferredRenderer() :
     fboPosition(QOpenGLTexture::Target2D),
     fboNormal(QOpenGLTexture::Target2D),
     fboColor(QOpenGLTexture::Target2D),
+    fboMask(QOpenGLTexture::Target2D),
     fboIdentifiers(QOpenGLTexture::Target2D),
     fboDepth(QOpenGLTexture::Target2D),
     fboGrid(QOpenGLTexture::Target2D),
@@ -104,6 +105,13 @@ void DeferredRenderer::initialize()
     mousePickProgram->vertexShaderFilename = "res/shaders/mouse_picking/mousePicking.vert";
     mousePickProgram->fragmentShaderFilename = "res/shaders/mouse_picking/mousePicking.frag";
     mousePickProgram->includeForSerialization = false;
+
+    ///Outline
+    outlineProgram = resourceManager->createShaderProgram();
+    outlineProgram->name = "Outline";
+    outlineProgram->vertexShaderFilename = "res/shaders/outline/outline.vert";
+    outlineProgram->fragmentShaderFilename = "res/shaders/outline/outline.frag";
+    outlineProgram->includeForSerialization = false;
 
     ///Grid
     gridProgram = resourceManager->createShaderProgram();
@@ -230,6 +238,26 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_FLOAT, nullptr);
 
+    if (fboMask == 0) gl->glDeleteTextures(1, &fboMask);
+    gl->glGenTextures(1, &fboMask);
+    gl->glBindTexture(GL_TEXTURE_2D, fboMask);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+
+    if (fboOutline == 0) gl->glDeleteTextures(1, &fboOutline);
+    gl->glGenTextures(1, &fboOutline);
+    gl->glBindTexture(GL_TEXTURE_2D, fboOutline);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
     if (fboGrid == 0) gl->glDeleteTextures(1, &fboGrid);
     gl->glGenTextures(1, &fboGrid);
     gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
@@ -298,6 +326,7 @@ void DeferredRenderer::resize(int w, int h)
     fboInfo->addColorAttachment(1, fboNormal);
     fboInfo->addColorAttachment(2, fboColor);
     fboInfo->addColorAttachment(3, fboGrid);
+    fboInfo->addColorAttachment(4, fboMask);
     fboInfo->addDepthAttachment(fboDepth);
     fboInfo->release();
 
@@ -314,6 +343,7 @@ void DeferredRenderer::resize(int w, int h)
     fboPostProcess->bind();
     fboPostProcess->addColorAttachment(0, fboDOFV);
     fboPostProcess->addColorAttachment(1, fboDOF);
+    fboPostProcess->addColorAttachment(2, fboOutline);
     fboPostProcess->release();
 
     fboFinal->bind();
@@ -334,6 +364,7 @@ void DeferredRenderer::render(Camera *camera)
     passLights(camera);
     fboLight->release();
     fboPostProcess->bind();
+    passOutline();
     passDOF();
     fboPostProcess->release();
 
@@ -363,7 +394,11 @@ unsigned int DeferredRenderer::getClickedIdentifier(int x, int y)
 
     fboMousePick->release();
 
-    return (data[0]+data[1]*256+data[2]*256*256)*255.0;
+    int r = data[0]*255;
+    int g = data[1]*255;
+    int b = data[2]*255;
+
+    return (r+g*256+b*256*256);
 }
 
 void DeferredRenderer::passMeshes(Camera *camera)
@@ -373,8 +408,8 @@ void DeferredRenderer::passMeshes(Camera *camera)
     if (program.bind())
     {
         // Set FBO buffers
-        unsigned int attachments_info[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-        gl->glDrawBuffers(3, attachments_info);
+        unsigned int attachments_info[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT4 };
+        gl->glDrawBuffers(4, attachments_info);
 
         // Clear color
         gl->glClearDepth(1.0);
@@ -414,6 +449,7 @@ void DeferredRenderer::passMeshes(Camera *camera)
                 program.setUniformValue("worldMatrix", worldMatrix);
                 program.setUniformValue("worldViewMatrix", worldViewMatrix);
                 program.setUniformValue("normalMatrix", normalMatrix);
+                program.setUniformValue("selected", selection->IsEntitySelected(meshRenderer->entity));
 
                 int materialIndex = 0;
                 for (auto submesh : mesh->submeshes)
@@ -466,6 +502,7 @@ void DeferredRenderer::passMeshes(Camera *camera)
                 program.setUniformValue("worldMatrix", worldMatrix);
                 program.setUniformValue("worldViewMatrix", worldViewMatrix);
                 program.setUniformValue("normalMatrix", normalMatrix);
+                program.setUniformValue("selected", selection->IsEntitySelected(lightSource->entity));
 
                 for (auto submesh : resourceManager->sphere->submeshes)
                 {
@@ -695,6 +732,28 @@ void DeferredRenderer::passIdentifiers(Camera *camera)
     }
 }
 
+void DeferredRenderer::passOutline()
+{
+    QOpenGLShaderProgram &program = outlineProgram->program;
+    if(program.bind()){
+        // Set FBO buffers
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT2);
+
+        // Clear color
+        gl->glClearDepth(1.0);
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        gl->glActiveTexture(GL_TEXTURE0);
+        gl->glBindTexture(GL_TEXTURE_2D, fboMask);
+        program.setUniformValue("mask", 0);
+
+        resourceManager->quad->submeshes[0]->draw();
+
+        program.release();
+    }
+}
+
 void DeferredRenderer::passDOF(){
 
     QOpenGLShaderProgram &program = DOFProgram->program;
@@ -771,6 +830,10 @@ void DeferredRenderer::finalMix(){
 
         // Lighting
         gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
+        resourceManager->quad->submeshes[0]->draw();
+
+        // Outline
+        gl->glBindTexture(GL_TEXTURE_2D, fboOutline);
         resourceManager->quad->submeshes[0]->draw();
 
         gl->glDisable(GL_BLEND);

@@ -118,7 +118,7 @@ void OpenGLWidget::paintGL()
         {
             if (entity->active && entity->id == objectId)
             {
-                emit selection->entitySelected((entity));
+                selection->select((entity));
             }
          }
 

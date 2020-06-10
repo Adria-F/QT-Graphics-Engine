@@ -29,6 +29,7 @@ private:
     void passMeshes(Camera *camera);
     void passLights(Camera *camera);
     void passIdentifiers(Camera *camera);
+    void passOutline();
     void passDOF();
     void finalMix();
     void passBlit();
@@ -41,13 +42,14 @@ private:
     ShaderProgram *DOFProgram = nullptr;
     ShaderProgram *blitProgram = nullptr;
     ShaderProgram *mousePickProgram = nullptr;
-
+    ShaderProgram *outlineProgram = nullptr;
 
     FramebufferObject *fboInfo = nullptr;
     GLuint fboPosition = 0;
     GLuint fboNormal = 0;
     GLuint fboColor = 0;
     GLuint fboGrid = 0;
+    GLuint fboMask = 0;
 
     FramebufferObject *fboMousePick = nullptr;
     GLuint fboIdentifiers = 0;
@@ -57,8 +59,9 @@ private:
     GLuint fboLightCircles = 0;
 
     FramebufferObject *fboPostProcess = nullptr;
-    GLuint fboDOFV;
-    GLuint fboDOF;
+    GLuint fboDOFV = 0;
+    GLuint fboDOF = 0;
+    GLuint fboOutline = 0;
 
     FramebufferObject *fboFinal = nullptr;
     GLuint fboFinalTexture;

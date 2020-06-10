@@ -133,5 +133,7 @@ DISTFILES += \
     res/shaders/lighting/deferred_lighting.frag \
     res/shaders/mouse_picking/mousePicking.frag \
     res/shaders/mouse_picking/mousePicking.vert \
+    res/shaders/outline/outline.frag \
+    res/shaders/outline/outline.vert \
     res/shaders/texture_view/texture_view.frag \
     res/shaders/texture_view/texture_view.vert
