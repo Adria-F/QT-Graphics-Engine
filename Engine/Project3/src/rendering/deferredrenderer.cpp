@@ -14,6 +14,8 @@
 #include <QVector3D>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
+#include <QRandomGenerator>
+#include <time.h>
 
 
 static void sendLightsToProgram(QOpenGLShaderProgram &program, const QMatrix4x4 &worldMatrix)
@@ -50,6 +52,8 @@ DeferredRenderer::DeferredRenderer() :
     fboPosition(QOpenGLTexture::Target2D),
     fboNormal(QOpenGLTexture::Target2D),
     fboColor(QOpenGLTexture::Target2D),
+    fboAO(QOpenGLTexture::Target2D),
+    fboNoise(QOpenGLTexture::Target2D),
     fboMask(QOpenGLTexture::Target2D),
     fboIdentifiers(QOpenGLTexture::Target2D),
     fboDepth(QOpenGLTexture::Target2D),
@@ -71,6 +75,7 @@ DeferredRenderer::DeferredRenderer() :
     addTexture("Position");
     addTexture("Normals");
     addTexture("Color");
+    addTexture("Ambient Occlusion");
     addTexture("Grid");
     addTexture("DOF");
     addTexture("Object Identifiers");
@@ -98,6 +103,13 @@ void DeferredRenderer::initialize()
     deferredGeometryProgram->vertexShaderFilename = "res/shaders/forward_shader/standard_shading.vert";
     deferredGeometryProgram->fragmentShaderFilename = "res/shaders/lighting/deferred_geometry.frag";
     deferredGeometryProgram->includeForSerialization = false;
+
+    ///Ambient Occlusion
+    ssaoProgram = resourceManager->createShaderProgram();
+    ssaoProgram->name = "Ambient Occlusion";
+    ssaoProgram->vertexShaderFilename = "res/shaders/ssao/ssao.vert";
+    ssaoProgram->fragmentShaderFilename = "res/shaders/ssao/ssao.frag";
+    ssaoProgram->includeForSerialization = false;
 
     ///Mouse Picking
     mousePickProgram = resourceManager->createShaderProgram();
@@ -147,6 +159,9 @@ void DeferredRenderer::initialize()
     fboInfo = new FramebufferObject;
     fboInfo->create();
 
+    fboSSAO = new FramebufferObject;
+    fboSSAO->create();
+
     fboMousePick = new FramebufferObject;
     fboMousePick->create();
 
@@ -158,12 +173,52 @@ void DeferredRenderer::initialize()
 
     fboFinal = new FramebufferObject;
     fboFinal->create();
+
+    //Create SSAO Kernel
+    QRandomGenerator generator;
+    generator.seed((time(NULL)));
+    for (unsigned int i = 0; i< 64; ++i)
+    {
+        QVector3D sample(
+                    generator.generateDouble() * 2.0 - 1.0,
+                    generator.generateDouble() * 2.0 - 1.0,
+                    generator.generateDouble()
+                    );
+        sample.normalize();
+        sample *= generator.generateDouble();
+        float scale = (float)i / 64.0;
+        scale = 0.1f+ scale*scale * (1.0f-0.1f);
+        sample *= scale;
+        ssaoKernel.push_back(sample);
+    }
+
+    //Create 4x4 texture of random vectors
+    QVector<QVector3D> ssaoNoise;
+    for (unsigned int i = 0; i < 16; i++)
+    {
+        QVector3D noise(
+                    generator.generateDouble() * 2.0 - 1.0,
+                    generator.generateDouble() * 2.0 - 1.0,
+                    0.0f
+                    );
+        ssaoNoise.push_back(noise);
+    }
+    gl->glGenTextures(1, &fboNoise);
+    gl->glBindTexture(GL_TEXTURE_2D, fboNoise);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
 }
 
 void DeferredRenderer::finalize()
 {
     fboInfo->destroy();
     delete fboInfo;
+
+    fboSSAO->destroy();
+    delete fboSSAO;
 
     fboMousePick->destroy();
     delete fboMousePick;
@@ -227,6 +282,16 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    if (fboAO == 0) gl->glDeleteTextures(1, &fboAO);
+    gl->glGenTextures(1, &fboAO);
+    gl->glBindTexture(GL_TEXTURE_2D, fboAO);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_FLOAT, nullptr);
 
     if (fboIdentifiers == 0) gl->glDeleteTextures(1, &fboIdentifiers);
     gl->glGenTextures(1, &fboIdentifiers);
@@ -330,6 +395,10 @@ void DeferredRenderer::resize(int w, int h)
     fboInfo->addDepthAttachment(fboDepth);
     fboInfo->release();
 
+    fboSSAO->bind();
+    fboSSAO->addColorAttachment(0, fboAO);
+    fboSSAO->release();
+
     fboMousePick->bind();
     fboMousePick->addColorAttachment(0, fboIdentifiers);
     fboMousePick->addDepthAttachment(fboDepth);
@@ -360,6 +429,9 @@ void DeferredRenderer::render(Camera *camera)
     passMeshes(camera);
     passGrid(camera);
     fboInfo->release();
+    fboSSAO->bind();
+    passSSAO(camera);
+    fboSSAO->release();
     fboLight->bind();
     passLights(camera);
     fboLight->release();
@@ -661,6 +733,36 @@ void DeferredRenderer::passLights(Camera *camera)
     }
 }
 
+void DeferredRenderer::passSSAO(Camera *camera)
+{
+    QOpenGLShaderProgram &program = ssaoProgram->program;
+    if(program.bind()){
+        // Set FBO buffers
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+        // Clear color
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT);
+
+        program.setUniformValue("projectionMatrix", camera->projectionMatrix);
+        program.setUniformValueArray("samples", &ssaoKernel[0], 64);
+
+        gl->glActiveTexture(GL_TEXTURE0);
+        gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
+        gl->glActiveTexture(GL_TEXTURE1);
+        gl->glBindTexture(GL_TEXTURE_2D, fboNormal);
+        gl->glActiveTexture(GL_TEXTURE2);
+        gl->glBindTexture(GL_TEXTURE_2D, fboNoise);
+        program.setUniformValue("gPosition", 0);
+        program.setUniformValue("gNormal", 1);
+        program.setUniformValue("noiseMap", 2);
+
+        resourceManager->quad->submeshes[0]->draw();
+
+        program.release();
+    }
+}
+
 void DeferredRenderer::passIdentifiers(Camera *camera)
 {
     QOpenGLShaderProgram &program = mousePickProgram->program;
@@ -867,6 +969,8 @@ void DeferredRenderer::passBlit()
             gl->glBindTexture(GL_TEXTURE_2D, fboNormal);
         } else if(shownTexture() == "Color"){
             gl->glBindTexture(GL_TEXTURE_2D, fboColor);
+        } else if(shownTexture() == "Ambient Occlusion"){
+            gl->glBindTexture(GL_TEXTURE_2D, fboAO);
         } else if(shownTexture() == "Grid"){
             gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
         } else if(shownTexture() == "Light Circles") {

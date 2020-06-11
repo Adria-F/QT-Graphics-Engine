@@ -28,6 +28,7 @@ private:
     void passGrid(Camera* camera);
     void passMeshes(Camera *camera);
     void passLights(Camera *camera);
+    void passSSAO(Camera *camera);
     void passIdentifiers(Camera *camera);
     void passOutline();
     void passDOF();
@@ -43,6 +44,7 @@ private:
     ShaderProgram *blitProgram = nullptr;
     ShaderProgram *mousePickProgram = nullptr;
     ShaderProgram *outlineProgram = nullptr;
+    ShaderProgram *ssaoProgram = nullptr;
 
     FramebufferObject *fboInfo = nullptr;
     GLuint fboPosition = 0;
@@ -50,6 +52,10 @@ private:
     GLuint fboColor = 0;
     GLuint fboGrid = 0;
     GLuint fboMask = 0;
+
+    FramebufferObject *fboSSAO = nullptr;
+    GLuint fboAO = 0;
+    GLuint fboNoise = 0;
 
     FramebufferObject *fboMousePick = nullptr;
     GLuint fboIdentifiers = 0;
@@ -69,6 +75,8 @@ private:
     // Unused
     GLuint fboSpecular = 0;
     GLuint fboDepth = 0;
+
+    std::vector<QVector3D> ssaoKernel;
 };
 
 #endif // DEFERREDRENDERER_H

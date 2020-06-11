@@ -135,5 +135,7 @@ DISTFILES += \
     res/shaders/mouse_picking/mousePicking.vert \
     res/shaders/outline/outline.frag \
     res/shaders/outline/outline.vert \
+    res/shaders/ssao/ssao.frag \
+    res/shaders/ssao/ssao.vert \
     res/shaders/texture_view/texture_view.frag \
     res/shaders/texture_view/texture_view.vert
