@@ -67,6 +67,7 @@ void MiscSettingsWidget::onBackgroundColorClicked()
 void MiscSettingsWidget::onVisualHintChanged()
 {
     miscSettings->renderLightSources = ui->checkBoxLightSources->isChecked();
+    miscSettings->grid = ui->checkBoxGrid->isChecked();
     emit settingsChanged();
 }
 

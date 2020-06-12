@@ -264,16 +264,6 @@ void DeferredRenderer::resize(int w, int h)
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-    if (fboAmbientLighting == 0) gl->glDeleteTextures(1, &fboAmbientLighting);
-    gl->glGenTextures(1, &fboAmbientLighting);
-    gl->glBindTexture(GL_TEXTURE_2D, fboAmbientLighting);
-    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
     if (fboPosition == 0) gl->glDeleteTextures(1, &fboPosition);
     gl->glGenTextures(1, &fboPosition);
     gl->glBindTexture(GL_TEXTURE_2D, fboPosition);
@@ -429,7 +419,6 @@ void DeferredRenderer::resize(int w, int h)
     fboLight->bind();
     fboLight->addColorAttachment(0, fboLighting);
     fboLight->addColorAttachment(1, fboLightCircles);
-    fboLight->addColorAttachment(2, fboAmbientLighting);
     fboLight->release();
 
     fboPostProcess->bind();
@@ -457,8 +446,8 @@ void DeferredRenderer::render(Camera *camera)
     passSSAO(camera);
     fboSSAO->release();
     fboLight->bind();
-    passLights(camera);
     passAmbient();
+    passLights(camera);
     fboLight->release();
     fboPostProcess->bind();
     passMask(camera);
@@ -652,7 +641,7 @@ void DeferredRenderer::passGrid(Camera *camera){
 
         // Background parameters
         program.setUniformValue("backgroundColor", miscSettings->backgroundColor);
-
+        program.setUniformValue("drawGrid", miscSettings->grid);
 
         resourceManager->quad->submeshes[0]->draw();
 
@@ -671,13 +660,15 @@ void DeferredRenderer::passLights(Camera *camera)
     if (program.bind())
     {
         // Set FBO buffers
-        unsigned int attachments_final[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-        gl->glDrawBuffers(2, attachments_final);
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT1); //Clear only attachments 1 (light circles) as attachment 0 has been cleared in passAmbient()
 
         // Clear color
         gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        unsigned int attachments_final[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+        gl->glDrawBuffers(2, attachments_final);
 
         //Set uniforms
         program.setUniformValue("viewMatrix", camera->viewMatrix);
@@ -762,11 +753,12 @@ void DeferredRenderer::passAmbient()
     QOpenGLShaderProgram &program = ambientLightingProgram->program;
     if(program.bind()){
         // Set FBO buffers
-        gl->glDrawBuffer(GL_COLOR_ATTACHMENT2);
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
         // Clear color
+        gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
-        gl->glClear(GL_COLOR_BUFFER_BIT);
+        gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         program.setUniformValue("ambientValue", miscSettings->ambientValue);
         program.setUniformValue("applyOcclusion", miscSettings->ambientOcclusion);
@@ -970,7 +962,7 @@ void DeferredRenderer::passOutline()
 
         // Clear color
         gl->glClearDepth(1.0);
-        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClearColor(0.0f,0.0f,0.0f,0.0);
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         program.setUniformValue("outlineColor", miscSettings->outlineColor);
@@ -1060,14 +1052,11 @@ void DeferredRenderer::finalMix(){
         gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
         resourceManager->quad->submeshes[0]->draw();
 
-        // Ambient Lighting
-        gl->glBindTexture(GL_TEXTURE_2D, fboAmbientLighting);
-        resourceManager->quad->submeshes[0]->draw();
-
         // Lighting
         gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
         resourceManager->quad->submeshes[0]->draw();
 
+        gl->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //Disable additive blend to avoid blending with background colors
         // Outline
         gl->glBindTexture(GL_TEXTURE_2D, fboOutline);
         resourceManager->quad->submeshes[0]->draw();

@@ -1,6 +1,5 @@
 #version 330 core
 
-
 uniform float left;
 uniform float right;
 uniform float bottom;
@@ -12,6 +11,7 @@ uniform mat4 projectionMatrix;
 
 // Background
 uniform vec4 backgroundColor;
+uniform bool drawGrid;
 
 // Models depth
 uniform sampler2D depth;
@@ -51,6 +51,14 @@ void main(void)
 {
     outColor = computeBackgroundColor();
     float fragmentDepth = texture(depth, texCoord).r;
+
+    if (drawGrid == false)
+    {
+        if (fragmentDepth < 1.0)
+            discard;
+        else
+            return;
+    }
 
     // Eye direction
     vec3 eyedirEyespace;

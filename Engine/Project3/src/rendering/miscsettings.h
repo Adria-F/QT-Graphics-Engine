@@ -15,6 +15,7 @@ public:
     float outlineThickness = 2.0f;
     bool ambientOcclusion = true;
     float ambientValue = 0.2f;
+    bool grid = true;
 };
 
 #endif // MISCSETTINGS_H

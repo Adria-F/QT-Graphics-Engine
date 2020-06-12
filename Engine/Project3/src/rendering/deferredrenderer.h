@@ -66,7 +66,6 @@ private:
     FramebufferObject *fboLight = nullptr;
     GLuint fboLighting = 0;
     GLuint fboLightCircles = 0;
-    GLuint fboAmbientLighting = 0;
 
     FramebufferObject *fboPostProcess = nullptr;
     GLuint fboDOFV = 0;
