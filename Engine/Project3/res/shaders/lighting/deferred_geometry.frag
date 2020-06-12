@@ -2,7 +2,6 @@
 
 uniform sampler2D albedoTexture;
 uniform sampler2D Depth;
-uniform bool selected;
 
 in vec3 vPosition;
 in vec3 vNormal;
@@ -11,15 +10,10 @@ in vec2 vTexCoords;
 layout (location = 0) out vec4 position;
 layout (location = 1) out vec4 normal;
 layout (location = 2) out vec4 color;
-layout (location = 3) out vec3 mask;
 
 void main(void)
 {
     position.rgb = vPosition;
     normal.rgb = normalize(vNormal);
     color.rgb = texture(albedoTexture, vTexCoords).rgb;
-    if (selected)
-        mask = vec3(1.0);
-    else
-        mask = vec3(0.0);
 }

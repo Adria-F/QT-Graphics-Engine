@@ -118,6 +118,13 @@ void DeferredRenderer::initialize()
     mousePickProgram->fragmentShaderFilename = "res/shaders/mouse_picking/mousePicking.frag";
     mousePickProgram->includeForSerialization = false;
 
+    ///Selection Mask
+    maskProgram = resourceManager->createShaderProgram();
+    maskProgram->name = "Mask";
+    maskProgram->vertexShaderFilename = "res/shaders/forward_shader/standard_shading.vert";
+    maskProgram->fragmentShaderFilename = "res/shaders/outline/mask.frag";
+    maskProgram->includeForSerialization = false;
+
     ///Outline
     outlineProgram = resourceManager->createShaderProgram();
     outlineProgram->name = "Outline";
@@ -406,8 +413,7 @@ void DeferredRenderer::resize(int w, int h)
     fboInfo->addColorAttachment(0, fboPosition);
     fboInfo->addColorAttachment(1, fboNormal);
     fboInfo->addColorAttachment(2, fboColor);
-    fboInfo->addColorAttachment(3, fboGrid);
-    fboInfo->addColorAttachment(4, fboMask);
+    fboInfo->addColorAttachment(3, fboGrid);    
     fboInfo->addDepthAttachment(fboDepth);
     fboInfo->release();
 
@@ -429,7 +435,8 @@ void DeferredRenderer::resize(int w, int h)
     fboPostProcess->bind();
     fboPostProcess->addColorAttachment(0, fboDOFV);
     fboPostProcess->addColorAttachment(1, fboDOF);
-    fboPostProcess->addColorAttachment(2, fboOutline);
+    fboPostProcess->addColorAttachment(2, fboMask);
+    fboPostProcess->addColorAttachment(3, fboOutline);
     fboPostProcess->release();
 
     fboFinal->bind();
@@ -454,6 +461,7 @@ void DeferredRenderer::render(Camera *camera)
     passAmbient();
     fboLight->release();
     fboPostProcess->bind();
+    passMask(camera);
     passOutline();
     passDOF();
     fboPostProcess->release();
@@ -498,8 +506,8 @@ void DeferredRenderer::passMeshes(Camera *camera)
     if (program.bind())
     {
         // Set FBO buffers
-        unsigned int attachments_info[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT4 };
-        gl->glDrawBuffers(4, attachments_info);
+        unsigned int attachments_info[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+        gl->glDrawBuffers(3, attachments_info);
 
         // Clear color
         gl->glClearDepth(1.0);
@@ -539,7 +547,6 @@ void DeferredRenderer::passMeshes(Camera *camera)
                 program.setUniformValue("worldMatrix", worldMatrix);
                 program.setUniformValue("worldViewMatrix", worldViewMatrix);
                 program.setUniformValue("normalMatrix", normalMatrix);
-                program.setUniformValue("selected", selection->IsEntitySelected(meshRenderer->entity));
 
                 int materialIndex = 0;
                 for (auto submesh : mesh->submeshes)
@@ -592,7 +599,6 @@ void DeferredRenderer::passMeshes(Camera *camera)
                 program.setUniformValue("worldMatrix", worldMatrix);
                 program.setUniformValue("worldViewMatrix", worldViewMatrix);
                 program.setUniformValue("normalMatrix", normalMatrix);
-                program.setUniformValue("selected", selection->IsEntitySelected(lightSource->entity));
 
                 for (auto submesh : resourceManager->sphere->submeshes)
                 {
@@ -762,7 +768,8 @@ void DeferredRenderer::passAmbient()
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
         gl->glClear(GL_COLOR_BUFFER_BIT);
 
-        program.setUniformValue("ambientValue", 0.02f);
+        program.setUniformValue("ambientValue", miscSettings->ambientValue);
+        program.setUniformValue("applyOcclusion", miscSettings->ambientOcclusion);
 
         gl->glActiveTexture(GL_TEXTURE0);
         gl->glBindTexture(GL_TEXTURE_2D, fboColor);
@@ -882,17 +889,92 @@ void DeferredRenderer::passIdentifiers(Camera *camera)
     }
 }
 
+void DeferredRenderer::passMask(Camera *camera)
+{
+    QOpenGLShaderProgram &program = maskProgram->program;
+
+    if (program.bind())
+    {
+        // Set FBO buffers
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT2);
+
+        // Clear color
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT);
+
+        //Set uniforms
+        program.setUniformValue("projectionMatrix", camera->projectionMatrix);
+
+        QVector<MeshRenderer*> meshRenderers;
+        QVector<LightSource*> lightSources;
+
+        // Get components
+        for (int i = 0; i < selection->count; ++i)
+        {
+            Entity* entity = selection->entities[i];
+            if (entity->active)
+            {
+                if (entity->meshRenderer != nullptr) { meshRenderers.push_back(entity->meshRenderer); }
+                if (entity->lightSource != nullptr) { lightSources.push_back(entity->lightSource); }
+            }
+        }
+
+        // Meshes
+        for (auto meshRenderer : meshRenderers)
+        {
+            auto mesh = meshRenderer->mesh;
+
+            if (mesh != nullptr)
+            {
+                QMatrix4x4 worldMatrix = meshRenderer->entity->transform->matrix();
+                QMatrix4x4 worldViewMatrix = camera->viewMatrix * worldMatrix;
+
+                program.setUniformValue("worldMatrix", worldMatrix);
+                program.setUniformValue("worldViewMatrix", worldViewMatrix);
+
+                for (auto submesh : mesh->submeshes)
+                {
+                    submesh->draw();
+                }
+            }
+        }
+
+        // Light spheres
+        if (miscSettings->renderLightSources)
+        {
+            for (auto lightSource : lightSources)
+            {
+                QMatrix4x4 worldMatrix = lightSource->entity->transform->matrix();
+                QMatrix4x4 scaleMatrix; scaleMatrix.scale(0.1f, 0.1f, 0.1f);
+                QMatrix4x4 worldViewMatrix = camera->viewMatrix * worldMatrix * scaleMatrix;
+                program.setUniformValue("worldMatrix", worldMatrix);
+                program.setUniformValue("worldViewMatrix", worldViewMatrix);
+
+                for (auto submesh : resourceManager->sphere->submeshes)
+                {
+                    submesh->draw();
+                }
+            }
+        }
+
+        program.release();
+    }
+}
+
 void DeferredRenderer::passOutline()
 {
     QOpenGLShaderProgram &program = outlineProgram->program;
     if(program.bind()){
         // Set FBO buffers
-        gl->glDrawBuffer(GL_COLOR_ATTACHMENT2);
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT3);
 
         // Clear color
         gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        program.setUniformValue("outlineColor", miscSettings->outlineColor);
+        program.setUniformValue("outlineThickness", miscSettings->outlineThickness);
 
         gl->glActiveTexture(GL_TEXTURE0);
         gl->glBindTexture(GL_TEXTURE_2D, fboMask);

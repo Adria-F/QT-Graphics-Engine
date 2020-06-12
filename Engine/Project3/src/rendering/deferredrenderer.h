@@ -31,6 +31,7 @@ private:
     void passAmbient();
     void passSSAO(Camera *camera);
     void passIdentifiers(Camera *camera);
+    void passMask(Camera *camera);
     void passOutline();
     void passDOF();
     void finalMix();
@@ -45,6 +46,7 @@ private:
     ShaderProgram *DOFProgram = nullptr;
     ShaderProgram *blitProgram = nullptr;
     ShaderProgram *mousePickProgram = nullptr;
+    ShaderProgram *maskProgram = nullptr;
     ShaderProgram *outlineProgram = nullptr;
     ShaderProgram *ssaoProgram = nullptr;
 
@@ -53,7 +55,6 @@ private:
     GLuint fboNormal = 0;
     GLuint fboColor = 0;
     GLuint fboGrid = 0;
-    GLuint fboMask = 0;
 
     FramebufferObject *fboSSAO = nullptr;
     GLuint fboAO = 0;
@@ -70,6 +71,7 @@ private:
     FramebufferObject *fboPostProcess = nullptr;
     GLuint fboDOFV = 0;
     GLuint fboDOF = 0;
+    GLuint fboMask = 0;
     GLuint fboOutline = 0;
 
     FramebufferObject *fboFinal = nullptr;
