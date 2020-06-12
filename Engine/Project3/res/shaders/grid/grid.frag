@@ -56,8 +56,11 @@ void main(void)
     {
         if (fragmentDepth < 1.0)
             discard;
-        else
+        else{
+            outColor = vec4(pow(backgroundColor.rgb, vec3(2,2,2)), 1.0);
             return;
+        }
+
     }
 
     // Eye direction
