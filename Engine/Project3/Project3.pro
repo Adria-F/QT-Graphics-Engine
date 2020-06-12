@@ -129,6 +129,8 @@ DISTFILES += \
     res/shaders/forward_shader/standard_shading.vert \
     res/shaders/grid/grid.frag \
     res/shaders/grid/grid.vert \
+    res/shaders/lighting/ambientLighting.frag \
+    res/shaders/lighting/ambientLighting.vert \
     res/shaders/lighting/deferred_geometry.frag \
     res/shaders/lighting/deferred_lighting.frag \
     res/shaders/mouse_picking/mousePicking.frag \

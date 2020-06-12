@@ -132,13 +132,19 @@ void DeferredRenderer::initialize()
     gridProgram->fragmentShaderFilename = "res/shaders/grid/grid.frag";
     gridProgram->includeForSerialization = false;
 
-
     ///Deferred Lighting
     deferredLightingProgram = resourceManager->createShaderProgram();
-    deferredLightingProgram->name = "Forward shading";
+    deferredLightingProgram->name = "Deferred Lighting";
     deferredLightingProgram->vertexShaderFilename = "res/shaders/forward_shader/standard_shading.vert";
     deferredLightingProgram->fragmentShaderFilename = "res/shaders/lighting/deferred_lighting.frag";
     deferredLightingProgram->includeForSerialization = false;
+
+    ///Ambient Lighting
+    ambientLightingProgram = resourceManager->createShaderProgram();
+    ambientLightingProgram->name = "Ambient Lighting";
+    ambientLightingProgram->vertexShaderFilename = "res/shaders/lighting/ambientLighting.vert";
+    ambientLightingProgram->fragmentShaderFilename = "res/shaders/lighting/ambientLighting.frag";
+    ambientLightingProgram->includeForSerialization = false;
 
     /// DOF
     DOFProgram = resourceManager->createShaderProgram();
@@ -244,6 +250,16 @@ void DeferredRenderer::resize(int w, int h)
     if (fboLighting == 0) gl->glDeleteTextures(1, &fboLighting);
     gl->glGenTextures(1, &fboLighting);
     gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    if (fboAmbientLighting == 0) gl->glDeleteTextures(1, &fboAmbientLighting);
+    gl->glGenTextures(1, &fboAmbientLighting);
+    gl->glBindTexture(GL_TEXTURE_2D, fboAmbientLighting);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -407,6 +423,7 @@ void DeferredRenderer::resize(int w, int h)
     fboLight->bind();
     fboLight->addColorAttachment(0, fboLighting);
     fboLight->addColorAttachment(1, fboLightCircles);
+    fboLight->addColorAttachment(2, fboAmbientLighting);
     fboLight->release();
 
     fboPostProcess->bind();
@@ -434,6 +451,7 @@ void DeferredRenderer::render(Camera *camera)
     fboSSAO->release();
     fboLight->bind();
     passLights(camera);
+    passAmbient();
     fboLight->release();
     fboPostProcess->bind();
     passOutline();
@@ -646,14 +664,14 @@ void DeferredRenderer::passLights(Camera *camera)
 
     if (program.bind())
     {
+        // Set FBO buffers
+        unsigned int attachments_final[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+        gl->glDrawBuffers(2, attachments_final);
+
         // Clear color
         gl->glClearDepth(1.0);
         gl->glClearColor(0.0f,0.0f,0.0f,1.0);
         gl->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Set FBO buffers
-        unsigned int attachments_final[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-        gl->glDrawBuffers(2, attachments_final);
 
         //Set uniforms
         program.setUniformValue("viewMatrix", camera->viewMatrix);
@@ -733,6 +751,32 @@ void DeferredRenderer::passLights(Camera *camera)
     }
 }
 
+void DeferredRenderer::passAmbient()
+{
+    QOpenGLShaderProgram &program = ambientLightingProgram->program;
+    if(program.bind()){
+        // Set FBO buffers
+        gl->glDrawBuffer(GL_COLOR_ATTACHMENT2);
+
+        // Clear color
+        gl->glClearColor(0.0f,0.0f,0.0f,1.0);
+        gl->glClear(GL_COLOR_BUFFER_BIT);
+
+        program.setUniformValue("ambientValue", 0.02f);
+
+        gl->glActiveTexture(GL_TEXTURE0);
+        gl->glBindTexture(GL_TEXTURE_2D, fboColor);
+        gl->glActiveTexture(GL_TEXTURE1);
+        gl->glBindTexture(GL_TEXTURE_2D, fboAO);
+        program.setUniformValue("gColor", 0);
+        program.setUniformValue("ssao", 1);
+
+        resourceManager->quad->submeshes[0]->draw();
+
+        program.release();
+    }
+}
+
 void DeferredRenderer::passSSAO(Camera *camera)
 {
     QOpenGLShaderProgram &program = ssaoProgram->program;
@@ -745,6 +789,7 @@ void DeferredRenderer::passSSAO(Camera *camera)
         gl->glClear(GL_COLOR_BUFFER_BIT);
 
         program.setUniformValue("projectionMatrix", camera->projectionMatrix);
+        program.setUniformValue("viewMatrix", camera->viewMatrix);
         program.setUniformValueArray("samples", &ssaoKernel[0], 64);
 
         gl->glActiveTexture(GL_TEXTURE0);
@@ -752,10 +797,13 @@ void DeferredRenderer::passSSAO(Camera *camera)
         gl->glActiveTexture(GL_TEXTURE1);
         gl->glBindTexture(GL_TEXTURE_2D, fboNormal);
         gl->glActiveTexture(GL_TEXTURE2);
+        gl->glBindTexture(GL_TEXTURE_2D, fboDepth);
+        gl->glActiveTexture(GL_TEXTURE3);
         gl->glBindTexture(GL_TEXTURE_2D, fboNoise);
         program.setUniformValue("gPosition", 0);
         program.setUniformValue("gNormal", 1);
-        program.setUniformValue("noiseMap", 2);
+        program.setUniformValue("gDepth", 2);
+        program.setUniformValue("noiseMap", 3);
 
         resourceManager->quad->submeshes[0]->draw();
 
@@ -928,6 +976,10 @@ void DeferredRenderer::finalMix(){
 
         // Background
         gl->glBindTexture(GL_TEXTURE_2D, fboGrid);
+        resourceManager->quad->submeshes[0]->draw();
+
+        // Ambient Lighting
+        gl->glBindTexture(GL_TEXTURE_2D, fboAmbientLighting);
         resourceManager->quad->submeshes[0]->draw();
 
         // Lighting

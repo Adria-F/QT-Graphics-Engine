@@ -22,6 +22,6 @@ void main(void)
     // Forward shading outputs
     vTexCoords = texCoords;
     // Convert to world Space
-    vNormal = (worldMatrix * vec4(normal,1)).xyz;
-    vPosition = (worldMatrix * vec4(position,1)).xyz;
+    vNormal = (worldMatrix *  vec4(normal,0)).xyz;
+    vPosition = (worldMatrix *  vec4(position,1)).xyz;
 }

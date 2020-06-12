@@ -35,7 +35,6 @@ void main(void)
     if (lightType == 0 && pointDst > lightRange)
         discard;
 
-    vec3 ambient = vec3(0.0f);
     vec3 diffuse = vec3(0.0f);
     vec3 specular = vec3(0.0f);
 
@@ -56,5 +55,5 @@ void main(void)
     float attenuation = pow((1.0f-pointDst/lightRange),2.0f);
     if (lightType == 1)
         attenuation = 1.0f;
-    finalRender.rgb = color*(ambient+diffuse+specular)*lightIntensity*attenuation*lightColor;
+    finalRender.rgb = color*(diffuse+specular)*lightIntensity*attenuation*lightColor;
 }
