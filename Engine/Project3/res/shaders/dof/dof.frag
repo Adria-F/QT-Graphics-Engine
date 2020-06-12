@@ -5,6 +5,8 @@ uniform sampler2D color;
 uniform float depthFocus;
 uniform vec2 viewportSize;
 uniform vec2 texCoordInc;
+uniform float fallofStartMargin;
+uniform float fallofEndMargin;
 
 
 
@@ -14,10 +16,6 @@ out vec4 outColor;
 // Should be uniforms
 float near = 0.01;
 float far = 10000.0;
-// From depthFocus to start
-float fallofStartMargin = 3;
-// From depthFocus to end
-float fallofEndMargin = 10;
 
 float LinearizeDepth(float rawDepth){
     float z = rawDepth * 2.0 - 1.0;
@@ -34,8 +32,6 @@ void main(void){
         return;
 
     float pixelDepth = LinearizeDepth(texture(depth, texCoord).r);
-
-
     float depthDiff = abs(pixelDepth - depthFocus);
 
     float blurCoeficient = 1.0f;
@@ -45,9 +41,8 @@ void main(void){
         return;
     // If outside, we compute the blurCoeficient with fallofEndMargin
     else{
-        blurCoeficient = clamp(depthDiff / fallofEndMargin, 0.0, 1.0);
+        blurCoeficient = clamp((depthDiff - fallofStartMargin) / fallofEndMargin, 0.0, 1.0);
     }
-
 
 
     float weights[11];

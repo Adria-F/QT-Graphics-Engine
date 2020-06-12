@@ -23,6 +23,8 @@ MiscSettingsWidget::MiscSettingsWidget(QWidget *parent) :
     connect(ui->outlineColor, SIGNAL(clicked()), this, SLOT(onOutlineColorClicked()));
     connect(ui->outlineThickness, SIGNAL(valueChanged(double)), this, SLOT(onOutlineThicknessChanged(double)));
     connect(ui->depthFocus, SIGNAL(valueChanged(double)), this, SLOT(onDepthFocusChanged(double)));
+    connect(ui->fallofStartMargin, SIGNAL(valueChanged(double)), this, SLOT(onFallofStartMarginChanged(double)));
+    connect(ui->fallofEndMargin, SIGNAL(valueChanged(double)), this, SLOT(onFallofEndMarginChanged(double)));
     connect(ui->ambientOcclusion, SIGNAL(clicked()), this, SLOT(onAmbientLightToggled()));
     connect(ui->ambientValue, SIGNAL(valueChanged(double)), this, SLOT(onAmbientLightChanged(double)));
 }
@@ -90,6 +92,18 @@ void MiscSettingsWidget::onOutlineThicknessChanged(double newOutlineThickness)
 
 void MiscSettingsWidget::onDepthFocusChanged(double newDepthFocus){
     camera->depthFocus = newDepthFocus;
+    emit settingsChanged();
+}
+
+void MiscSettingsWidget::onFallofStartMarginChanged(double newFallofStartMargin)
+{
+    camera->depthFallofStartMargin = newFallofStartMargin;
+    emit settingsChanged();
+}
+
+void MiscSettingsWidget::onFallofEndMarginChanged(double newFallofEndMargin)
+{
+    camera->depthFallofEndMargin = newFallofEndMargin;
     emit settingsChanged();
 }
 

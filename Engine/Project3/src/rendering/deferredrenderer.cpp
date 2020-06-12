@@ -991,6 +991,8 @@ void DeferredRenderer::passDOF(){
         program.setUniformValue("color", 1);
         program.setUniformValue("depthFocus", camera->depthFocus);
         program.setUniformValue("viewportSize", QVector2D(camera->viewportWidth, camera->viewportHeight));
+        program.setUniformValue("fallofStartMargin", camera->depthFallofStartMargin);
+        program.setUniformValue("fallofEndMargin", camera->depthFallofEndMargin);
 
         // Vertical pass
         // Draw on fboDOFV
@@ -1053,7 +1055,7 @@ void DeferredRenderer::finalMix(){
         resourceManager->quad->submeshes[0]->draw();
 
         // Lighting
-        gl->glBindTexture(GL_TEXTURE_2D, fboLighting);
+        gl->glBindTexture(GL_TEXTURE_2D, fboDOF);
         resourceManager->quad->submeshes[0]->draw();
 
         gl->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //Disable additive blend to avoid blending with background colors

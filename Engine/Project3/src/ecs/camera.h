@@ -44,8 +44,10 @@ public:
     // Speed
     float maxSpeed = DEFAULT_CAMERA_SPEED;
 
-    // Depth Focus
+    // Depth of field
     float depthFocus = -1;
+    float depthFallofStartMargin = 3;
+    float depthFallofEndMargin = 10;
 
     // Derived matrices
     QMatrix4x4 worldMatrix; // From camera space to world space

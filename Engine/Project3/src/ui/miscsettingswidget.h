@@ -29,6 +29,8 @@ public slots:
     void onOutlineColorClicked();
     void onOutlineThicknessChanged(double newOutlineThickness);
     void onDepthFocusChanged(double newDepthFocus);
+    void onFallofStartMarginChanged(double newFallofStartMargin);
+    void onFallofEndMarginChanged(double newFallofEndMargin);
     void onAmbientLightToggled();
     void onAmbientLightChanged(double newAmbientLight);
 
