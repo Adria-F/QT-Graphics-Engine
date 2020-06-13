@@ -57,7 +57,6 @@ bool Interaction::navigate()
     static const float t = 1.0/60.0f; // Delta time
 
     bool pollEvents = input->mouseButtons[Qt::RightButton] == MouseButtonState::Pressed;
-    bool cameraChanged = false;
 
     // Mouse delta smoothing
     static float mousex_delta_prev[3] = {};
@@ -85,14 +84,47 @@ bool Interaction::navigate()
     // Camera navigation
     if (mousex_delta != 0 || mousey_delta != 0)
     {
-        cameraChanged = true;
-        yaw -= 0.5f * mousex_delta;
-        pitch -= 0.5f * mousey_delta;
-        while (yaw < 0.0f) yaw += 360.0f;
-        while (yaw > 360.0f) yaw -= 360.0f;
-        if (pitch > 89.0f) pitch = 89.0f;
-        if (pitch < -89.0f) pitch = -89.0f;
+        // Regular rotation
+        if(input->keys[Qt::Key_O] != KeyState::Pressed){
+            yaw -= 0.5f * mousex_delta;
+            pitch -= 0.5f * mousey_delta;
+            while (yaw < 0.0f) yaw += 360.0f;
+            while (yaw > 360.0f) yaw -= 360.0f;
+            if (pitch > 89.0f) pitch = 89.0f;
+            if (pitch < -89.0f) pitch = -89.0f;
+        }
+        // Orbital rotation
+        else{
+            QVector3D target(0,0,0);
+            if(selection->count != 0)
+                target = selection->entities[0]->transform->position;
+
+            // In radiants (entretainment)
+            float rotationAngle = 0.01 * mousex_delta;
+            QVector2D cameraPos2D = QVector2D(camera->position.x(), camera->position.z());
+            QVector2D target2D = QVector2D(target.x(), target.z());
+
+
+            QVector2D diffVector = (cameraPos2D - target2D);
+            QVector2D zeroVector = diffVector.normalized();
+            QVector2D newVector = QVector2D(zeroVector.x() * cos(rotationAngle) - zeroVector.y() * sin(rotationAngle),
+                                            zeroVector.x() * sin(rotationAngle) + zeroVector.y() * cos(rotationAngle));
+
+            QVector2D newCameraPos2D = target2D + newVector.normalized() * diffVector.length();
+
+            camera->position.setX(newCameraPos2D.x());
+            camera->position.setZ(newCameraPos2D.y());
+
+            yaw -= rotationAngle * 180/3.1416;
+            while (yaw < 0.0f) yaw += 360.0f;
+            while (yaw > 360.0f) yaw -= 360.0f;
+
+
+
+
+        }
     }
+
 
     static QVector3D speedVector;
     speedVector *= 0.99;
@@ -126,6 +158,8 @@ bool Interaction::navigate()
                                         0.0f,
                                         -sinf(qDegreesToRadians(yaw))) * a * t;
     }
+
+
 
     if (!accelerating) {
         speedVector *= 0.9;
