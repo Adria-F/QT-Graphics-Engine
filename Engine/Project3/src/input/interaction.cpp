@@ -100,24 +100,38 @@ bool Interaction::navigate()
                 target = selection->entities[0]->transform->position;
 
             // In radiants (entretainment)
-            float rotationAngle = 0.01 * mousex_delta;
+            float rotationAngleX = 0.01 * mousex_delta;
+            float rotationAngleY = 0.01 * mousey_delta;
             QVector2D cameraPos2D = QVector2D(camera->position.x(), camera->position.z());
             QVector2D target2D = QVector2D(target.x(), target.z());
 
 
             QVector2D diffVector = (cameraPos2D - target2D);
             QVector2D zeroVector = diffVector.normalized();
-            QVector2D newVector = QVector2D(zeroVector.x() * cos(rotationAngle) - zeroVector.y() * sin(rotationAngle),
-                                            zeroVector.x() * sin(rotationAngle) + zeroVector.y() * cos(rotationAngle));
+            QVector2D newVector = QVector2D(zeroVector.x() * cos(rotationAngleX) - zeroVector.y() * sin(rotationAngleX),
+                                            zeroVector.x() * sin(rotationAngleX) + zeroVector.y() * cos(rotationAngleX));
 
             QVector2D newCameraPos2D = target2D + newVector.normalized() * diffVector.length();
 
             camera->position.setX(newCameraPos2D.x());
             camera->position.setZ(newCameraPos2D.y());
 
-            yaw -= rotationAngle * 180/3.1416;
-            while (yaw < 0.0f) yaw += 360.0f;
-            while (yaw > 360.0f) yaw -= 360.0f;
+
+            QVector2D diffVectorNorm = (cameraPos2D - target2D).normalized();
+
+            yaw = atan2(diffVectorNorm.x(), diffVectorNorm.y()) * 180.0/3.14159265359;
+
+
+            pitch -= rotationAngleY * 180.0/3.14159265359;
+            camera->position.setY(camera->position.y() + mousey_delta * 0.1);
+
+           /* yaw -= rotationAngle * 180/3.1416;
+            */
+
+            /*while (yaw < 0.0f) yaw += 360.0f;
+            while (yaw > 360.0f) yaw -= 360.0f;*/
+
+            //QVector3D
 
 
 
