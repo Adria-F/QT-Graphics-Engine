@@ -1,4 +1,4 @@
-# 3D GRAPHICS ENGINE
+﻿# 3D GRAPHICS ENGINE
 
 3D graphic engine develop in Qt by ![Lucas Garcia](https://github.com/Skyway666) and ![Adrià Ferrer](https://github.com/Adria-F)
 
@@ -70,7 +70,11 @@ The background color can be changed and will properly mix with the grid when act
 
 ### Depth of field
 
-A depth of field technique is implemented that allows to change the depth focus and blur only certain elements.
+A depth of field technique is implemented. The user can toggle three variables in order to configure it at will:
+
+- Depth Focus: Distance in units from the camera to the focused point.
+- Fallof start: Margin which will remain unblured from the depth focus point.
+- Fallof end: Margin in which the bluring will be smoothed (from fallof start onwards).
 
 <p> 
 <img src="https://github.com/Adria-F/QT-Graphics-Engine/blob/master/Web%20Images/DOF1.JPG" width="400"> 
