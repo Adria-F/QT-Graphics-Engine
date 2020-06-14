@@ -81,6 +81,11 @@ A depth of field technique is implemented. The user can toggle three variables i
 <img src="https://github.com/Adria-F/QT-Graphics-Engine/blob/master/Web%20Images/DOF2.JPG" width="400"> 
 </p>
 
+### Orbital camera
+
+The orbital camera is enabled by pressing the "O" key. The camera will orbit around the selected object. In case
+of no object being selected, the rotation will be performed around the world's origin of coordinates (0,0,0).
+
 ### Configuring technique values
 
 The values related with the previous effects, can be modified from the "Misc settings" tab.
